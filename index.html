@@ -30,9 +30,15 @@
 				.setContent("You clicked the map at " + e.latlng.toString())
 				.openOn(map);
 		}
-		//map.on('click', onMapClick);
-		var customLayer = omnivore.csv('players/cumu.csv');
-		customLayer.addTo(map);
+		map.on('click', onMapClick);
+		var options = {
+	    filter: function(cols) {
+	        // my custom filter function
+	        return cols['player']=='ketchu';
+	    }
+		};
+		var myLayer = omnivore.csv('players/cumu.csv', options);
+		myLayer.addTo(map);
 	</script>
 </body>
 </html>
