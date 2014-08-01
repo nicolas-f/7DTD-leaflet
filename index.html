@@ -14,7 +14,6 @@
 <script src="leaflet.js"></script>
 <script src='leaflet-omnivore.min.js'></script>
 <script>
-    var sel = document.createElement("select");
     var map = L.map('map').setView([-0.5, -0.5], 7.5);
     var players = []
     var imageUrl = 'NavezganeMap.png',
@@ -34,6 +33,7 @@
             .openOn(map);
     }
     map.on('click', onMapClick);
+    var sel = document.createElement("select");
     var options = {
         filter: function(cols) {
             playerName = cols['player']
@@ -52,16 +52,17 @@
     };
     var myLayer = omnivore.csv('players/tracks.csv', options);
     myLayer.addTo(map);
+    sel.onchange = function() {
+        // If the user change player recreate the layer
+        map.removeLayer(myLayer);
+        myLayer = omnivore.csv('players/tracks.csv', options);
+    	myLayer.addTo(map);
+    }
     // ADD player selection control
     var MyControl = L.Control.extend({
-        initialize: function(foo, options) {
-            // ...
-            L.Util.setOptions(this, options);
-        },
         options: {
             position: 'topright'
         },
-
         onAdd: function(map) {
             // create the control container with a particular class name
             var container = L.DomUtil.create('div', 'my-custom-control');
