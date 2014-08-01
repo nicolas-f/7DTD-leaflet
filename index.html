@@ -46,8 +46,8 @@
                 opt.text = playerName;
                 sel.appendChild(opt);
             }
-            // my custom filter function
-            return sel.value == "Tous" || cols['player'] == sel.value;
+            // Show only selected player waypoints
+            return cols['player'] == sel.value;
         }
     };
     var myLayer = omnivore.csv('players/tracks.csv', options);
