@@ -62,6 +62,7 @@ class MapReader:
 def create_image_from_tile(tile_data):
     tile_image = PhotoImage(width=16, height=16)
     rgb = [[tile_data[x * 16 + y] for x in range(16)] for y in range(16)]
+    rgb.reverse()
     horizontal_line = " ".join(["{" + " ".join(["#%02x%02x%02x" % tuple(blockId) for blockId in row]) + "}"
                                 for row in rgb])
     tile_image.put(horizontal_line)
@@ -90,7 +91,7 @@ def create_tiles(player_map_path, tile_output_path, tile_level=8):
         x_dir_make = False
         x_path = os.path.join(z_path, str(x + 2**tile_level/2))
         for y in range(-(2**tile_level/2), (2**tile_level/2)):
-            tile_data = reader.tiles.get(index_from_xy(y, x), None)
+            tile_data = reader.tiles.get(index_from_xy(x,(2**tile_level/2) - y), None)
             if tile_data is not None:
                 tile_image = create_image_from_tile(tile_data)
                 # Create Dirs if not exists
