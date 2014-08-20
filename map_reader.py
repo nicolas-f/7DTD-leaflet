@@ -61,8 +61,7 @@ class MapReader:
 
 def create_image_from_tile(tile_data):
     tile_image = PhotoImage(width=16, height=16)
-    rgb = [[tile_data[x * 16 + y] for x in range(16)] for y in range(16)]
-    rgb.reverse()
+    rgb = [[tile_data[x * 16 + y] for y in range(16)] for x in range(16)][::-1]
     horizontal_line = " ".join(["{" + " ".join(["#%02x%02x%02x" % tuple(blockId) for blockId in row]) + "}"
                                 for row in rgb])
     tile_image.put(horizontal_line)
