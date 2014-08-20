@@ -1,0 +1,4 @@
+tiles/
+.idea
+*.pyc
+*.pyd
