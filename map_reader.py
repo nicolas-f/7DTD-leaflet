@@ -21,6 +21,7 @@
 from struct import unpack
 import os
 import png
+from Tkinter import Tk, PhotoImage
 
 ##
 # Convert X Y position to MAP file index
@@ -66,6 +67,7 @@ class MapReader:
 
 
 def create_tiles(player_map_path, tile_output_path, tile_level=8):
+    master = Tk()
     reader = MapReader()
     # Read and merge all tiles in .map files
     for map_file in player_map_path:
@@ -81,15 +83,18 @@ def create_tiles(player_map_path, tile_output_path, tile_level=8):
         for y in range(-(2**tile_level/2), (2**tile_level/2)):
             tile_data = reader.tiles.get(index_from_xy(x, y), None)
             if tile_data is not None:
-                tile_data = [item for sublist in tile_data for item in sublist]
+                tile_image = PhotoImage(width=16, height=16)
+                rgb = [[tile_data[x * 16 + y] for x in range(16)] for y in range(16)]
+                horizontal_line = " ".join(["{" + " ".join(["#%02x%02x%02x" % tuple(blockId) for blockId in row]) + "}"
+                                            for row in rgb])
+                tile_image.put(horizontal_line)
                 # Create Dirs if not exists
                 if not x_dir_make:
                     if not os.path.exists(x_path):
                         os.mkdir(x_path)
                         x_dir_make = True
-                png_path = os.path.join(x_path, str(y + 2**tile_level/2)+".png")
-                resized = [[tile_data[x * 16 + y] for x in range(16)] for y in range(16)]
-                png.from_array(resized, 'RGB', info={"size": (16, 16)}).save(png_path)
+                png_path = os.path.join(x_path, str(y + 2**tile_level/2)+".gif")
+                tile_image.write(png_path, "gif")
 
 create_tiles(["C:\\Users\\CUMU\\Documents\\7 Days To Die\\Saves\\Random Gen\\lll\\Player\\76561197968197169.map"],
              "tiles")
