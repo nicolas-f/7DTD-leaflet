@@ -82,7 +82,7 @@ def create_tiles(player_map_path, tile_output_path, tile_level=8):
     for map_file in player_map_path:
         reader.import_file(map_file)
     # make zoom folder
-    z_path = os.path.join(tile_output_path, str(tile_level))
+    z_path = os.path.join(tile_output_path, str(tile_level / 2))
     if not os.path.exists(z_path):
         os.mkdir(z_path)
     # iterate on x
@@ -90,7 +90,7 @@ def create_tiles(player_map_path, tile_output_path, tile_level=8):
         x_dir_make = False
         x_path = os.path.join(z_path, str(x + 2**tile_level/2))
         for y in range(-(2**tile_level/2), (2**tile_level/2)):
-            tile_data = reader.tiles.get(index_from_xy(x, y), None)
+            tile_data = reader.tiles.get(index_from_xy(y, x), None)
             if tile_data is not None:
                 tile_image = create_image_from_tile(tile_data)
                 # Create Dirs if not exists
