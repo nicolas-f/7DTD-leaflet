@@ -101,5 +101,9 @@ def create_tiles(player_map_path, tile_output_path, tile_level=8):
                 png_path = os.path.join(x_path, str(y + 2**tile_level/2)+".gif")
                 tile_image.write(png_path, "gif")
 
-create_tiles(["C:\\Users\\CUMU\\Documents\\7 Days To Die\\Saves\\Random Gen\\lll\\Player\\76561197968197169.map"],
+def read_folder(path):
+    map_files = [os.path.join(path,fich) for fich in os.listdir(path) if fich.endswith(".map")]
+    map_files.sort(key=lambda x: os.stat(x).st_mtime)
+    return map_files
+create_tiles(read_folder("C:\\Users\\CUMU\\Documents\\7 Days To Die\\Saves\\Random Gen\\lll\\Player"),
              "tiles")
