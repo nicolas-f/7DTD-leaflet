@@ -49,6 +49,7 @@ class MapReader:
             tiles_index = [unpack("i", curs.read(4))[0] for i in xrange(num)]
             #######################
             # read tiles pixels
+            new_tiles = 0
             if not index_only:
                 curs.seek(524297)
                 for i in xrange(num):
@@ -59,6 +60,8 @@ class MapReader:
                         #flatten pixels and convert to char
                         chunk = "".join([chr(band) for pixel in chunk for band in pixel])
                         self.tiles[tiles_index[i]] = chunk
+                        new_tiles += 1
+                print "New tiles :", new_tiles
             else:
                 self.tiles = dict.fromkeys(tiles_index + self.tiles.keys())
 
@@ -76,7 +79,8 @@ def create_tiles(player_map_path, tile_output_path, tile_level=7):
     """
     reader = MapReader()
     # Read and merge all tiles in .map files
-    for map_file in player_map_path:
+    for i, map_file in enumerate(player_map_path):
+        print "Read map file ", i + 1, "/", len(player_map_path)
         reader.import_file(map_file, False)
     # make zoom folder
     z_path = os.path.join(tile_output_path, str(tile_level))
@@ -100,10 +104,12 @@ def create_tiles(player_map_path, tile_output_path, tile_level=7):
     # print "Miny:", min(ykeys)," maxy:", max(ykeys)
     # iterate on x
     for x in range(2**tile_level):
-        print "Write tile X:", x," of ", 2**tile_level
+        print "Write tile X:", x + 1, " of ", 2**tile_level
         x_dir_make = False
         x_path = os.path.join(z_path, str(x))
         for y in range(2**tile_level):
+            # Fetch 256 tiles
+            pass
     #     x_dir_make = False
     #     x_path = os.path.join(z_path, str(x + 2**tile_level/2))
     #     for y in range(-(2**tile_level/2), (2**tile_level/2)):
