@@ -20,8 +20,7 @@
 
 from struct import unpack
 import os
-import png
-from Tkinter import Tk, PhotoImage
+from PIL import Image
 
 ##
 # Convert X Y position to MAP file index
@@ -59,16 +58,11 @@ class MapReader:
                 self.tiles[tiles_index[i]] = chunk
 
 
-def create_image_from_tile(tile_data):
-    tile_image = PhotoImage(width=16, height=16)
-    rgb = [[tile_data[x * 16 + y] for y in range(16)] for x in range(16)][::-1]
-    horizontal_line = " ".join(["{" + " ".join(["#%02x%02x%02x" % tuple(blockId) for blockId in row]) + "}"
-                                for row in rgb])
-    tile_image.put(horizontal_line)
-    tile_image = tile_image.zoom(16)
-    return tile_image
-
-
+def write_tile(tile_data, png_path):
+    # flatten pixels and convert to char
+    tile_raw = "".join([chr(band) for pixel in tile_data for band in pixel])
+    tile_im = Image.frombuffer('RGB', (16, 16), tile_raw, 'raw', 'RGB', 0, 1)
+    tile_im.save(png_path)
 def create_tiles(player_map_path, tile_output_path, tile_level=8):
     """
     Read all .map files and create a leaflet tile folder
@@ -77,7 +71,6 @@ def create_tiles(player_map_path, tile_output_path, tile_level=8):
     @param tile_level number of tiles to extract around position 0,0 of map. It is in the form of 4^n tiles.It will
     extract a grid of 2**n tiles on each side. n=8 will give you an extraction of -128 +128 in X and Y tiles index.
     """
-    master = Tk()
     reader = MapReader()
     # Read and merge all tiles in .map files
     for map_file in player_map_path:
@@ -94,14 +87,13 @@ def create_tiles(player_map_path, tile_output_path, tile_level=8):
         for y in range(-(2**tile_level/2), (2**tile_level/2)):
             tile_data = reader.tiles.get(index_from_xy(x,(2**tile_level/2) - y), None)
             if tile_data is not None:
-                tile_image = create_image_from_tile(tile_data)
                 # Create Dirs if not exists
                 if not x_dir_make:
                     if not os.path.exists(x_path):
                         os.mkdir(x_path)
                         x_dir_make = True
-                png_path = os.path.join(x_path, str(y + 2**tile_level/2)+".gif")
-                tile_image.write(png_path, "gif")
+                png_path = os.path.join(x_path, str(y + 2**tile_level/2)+".png")
+                write_tile(tile_data, png_path)
 
 def read_folder(path):
     map_files = [os.path.join(path,fich) for fich in os.listdir(path) if fich.endswith(".map")]
