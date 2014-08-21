@@ -65,6 +65,7 @@ def create_image_from_tile(tile_data):
     horizontal_line = " ".join(["{" + " ".join(["#%02x%02x%02x" % tuple(blockId) for blockId in row]) + "}"
                                 for row in rgb])
     tile_image.put(horizontal_line)
+    tile_image = tile_image.zoom(16)
     return tile_image
 
 
@@ -82,11 +83,12 @@ def create_tiles(player_map_path, tile_output_path, tile_level=8):
     for map_file in player_map_path:
         reader.import_file(map_file)
     # make zoom folder
-    z_path = os.path.join(tile_output_path, str(tile_level / 2))
+    z_path = os.path.join(tile_output_path, str(tile_level))
     if not os.path.exists(z_path):
         os.mkdir(z_path)
     # iterate on x
     for x in range(-(2**tile_level/2), (2**tile_level/2)):
+        print "Write tile X:", x+2**tile_level/2," of ", 2**tile_level
         x_dir_make = False
         x_path = os.path.join(z_path, str(x + 2**tile_level/2))
         for y in range(-(2**tile_level/2), (2**tile_level/2)):
