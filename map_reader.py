@@ -35,8 +35,7 @@ class MapReader:
 
     def __init__(self):
         pass
-
-    def import_file(self, map_file):
+    def import_file(self, map_file, index_only, skip_existing=True):
         with open(map_file, "rb") as curs:
             # Check beginning of file
             if not curs.read(4) == "map\0":
@@ -50,20 +49,24 @@ class MapReader:
             tiles_index = [unpack("i", curs.read(4))[0] for i in xrange(num)]
             #######################
             # read tiles pixels
-            curs.seek(524297)
-            for i in xrange(num):
-                # extract 16-bytes pixel then convert to RGB component
-                chunk = [[[((rgb & 0x7C00) >> 10 << 3), ((rgb & 0x3E0) >> 5) << 3, (rgb & 0x1F) << 3]
-                          for rgb in unpack("H", curs.read(2))][0] for c in xrange(256)]
-                self.tiles[tiles_index[i]] = chunk
+            if not index_only:
+                curs.seek(524297)
+                for i in xrange(num):
+                    if not skip_existing or tiles_index[i] not in self.tiles:
+                        #extract 16-bytes pixel then convert to RGB component
+                        chunk = [[[((rgb & 0x7C00) >> 10 << 3), ((rgb & 0x3E0) >> 5) << 3, (rgb & 0x1F) << 3]
+                                 for rgb in unpack("H", curs.read(2))][0] for c in xrange(256)]
+                        #flatten pixels and convert to char
+                        chunk = "".join([chr(band) for pixel in chunk for band in pixel])
+                        self.tiles[tiles_index[i]] = chunk
+            else:
+                self.tiles = dict.fromkeys(tiles_index + self.tiles.keys())
 
 
 def write_tile(tile_data, png_path):
-    # flatten pixels and convert to char
-    tile_raw = "".join([chr(band) for pixel in tile_data for band in pixel])
-    tile_im = Image.frombuffer('RGB', (16, 16), tile_raw, 'raw', 'RGB', 0, 1)
+    tile_im = Image.frombuffer('RGB', (16, 16), tile_data, 'raw', 'RGB', 0, 1)
     tile_im.save(png_path)
-def create_tiles(player_map_path, tile_output_path, tile_level=8):
+def create_tiles(player_map_path, tile_output_path, tile_level=7):
     """
     Read all .map files and create a leaflet tile folder
     @param player_map_path array of folder name where are stored map ex:C:\Users\UserName\Documents\7 Days To Die\Saves\
@@ -74,30 +77,50 @@ def create_tiles(player_map_path, tile_output_path, tile_level=8):
     reader = MapReader()
     # Read and merge all tiles in .map files
     for map_file in player_map_path:
-        reader.import_file(map_file)
+        reader.import_file(map_file, False)
     # make zoom folder
     z_path = os.path.join(tile_output_path, str(tile_level))
     if not os.path.exists(z_path):
         os.mkdir(z_path)
+    #compute min-max X Y
+    tile_range = 2**tile_level*16
+    # keys = reader.tiles.keys()
+    # index_tiles = {}
+    # for x in range(-(tile_range/2), (tile_range/2)):
+    #     for y in range(-(tile_range/2), (tile_range/2)):
+    #         index_tiles[index_from_xy(x, y)] = (x, y)
+    # xmin = tile_range
+    # ymin = tile_range
+    # xmax = -1
+    # ymax = -tile_range
+    # xkeys = [index_tiles.get(key, (None, None))[0] for key in keys if key in index_tiles]
+    # ykeys = [index_tiles.get(key, (None, None))[1] for key in keys if key in index_tiles]
+    # print "Map bounds :", -(tile_range/2),"x", tile_range/2
+    # print "Minx:", min(xkeys)," maxx:", max(xkeys)
+    # print "Miny:", min(ykeys)," maxy:", max(ykeys)
     # iterate on x
-    for x in range(-(2**tile_level/2), (2**tile_level/2)):
-        print "Write tile X:", x+2**tile_level/2," of ", 2**tile_level
+    for x in range(2**tile_level):
+        print "Write tile X:", x," of ", 2**tile_level
         x_dir_make = False
-        x_path = os.path.join(z_path, str(x + 2**tile_level/2))
-        for y in range(-(2**tile_level/2), (2**tile_level/2)):
-            tile_data = reader.tiles.get(index_from_xy(x,(2**tile_level/2) - y), None)
-            if tile_data is not None:
-                # Create Dirs if not exists
-                if not x_dir_make:
-                    if not os.path.exists(x_path):
-                        os.mkdir(x_path)
-                        x_dir_make = True
-                png_path = os.path.join(x_path, str(y + 2**tile_level/2)+".png")
-                write_tile(tile_data, png_path)
+        x_path = os.path.join(z_path, str(x))
+        for y in range(2**tile_level):
+    #     x_dir_make = False
+    #     x_path = os.path.join(z_path, str(x + 2**tile_level/2))
+    #     for y in range(-(2**tile_level/2), (2**tile_level/2)):
+    #         tile_data = reader.tiles.get(index_from_xy(x,(2**tile_level/2) - y), None)
+    #         if tile_data is not None:
+    #             # Create Dirs if not exists
+    #             if not x_dir_make:
+    #                 if not os.path.exists(x_path):
+    #                     os.mkdir(x_path)
+    #                     x_dir_make = True
+    #             png_path = os.path.join(x_path, str(y + 2**tile_level/2)+".png")
+    #             write_tile(tile_data, png_path)
+
 
 def read_folder(path):
-    map_files = [os.path.join(path,fich) for fich in os.listdir(path) if fich.endswith(".map")]
-    map_files.sort(key=lambda x: os.stat(x).st_mtime)
+    map_files = [os.path.join(path, file_name) for file_name in os.listdir(path) if file_name.endswith(".map")]
+    map_files.sort(key=lambda file_path: -os.stat(file_path).st_mtime)
     return map_files
-create_tiles(read_folder("C:\\Users\\CUMU\\Documents\\7 Days To Die\\Saves\\Random Gen\\lll\\Player"),
+create_tiles(read_folder("E:\\github\\Player"),
              "tiles")
