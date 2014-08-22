@@ -28,7 +28,7 @@ import itertools
 
 
 def index_from_xy(x, y):
-    return (y & 65535) << 16 | (x & 65535)
+    return y << 16 | (x & 65535)
 
 
 class MapReader:
@@ -92,6 +92,8 @@ def create_tiles(player_map_path, tile_output_path, tile_level=7):
     #compute min-max X Y
     tile_range = 2**tile_level*16
     # iterate on x
+    minmax_tile = [(tile_range, tile_range),(-tile_range, -tile_range)]
+    used_tiles = 0
     for x in range(2**tile_level):
         print "Write tile X:", x + 1, " of ", 2**tile_level
         x_dir_make = False
@@ -101,8 +103,12 @@ def create_tiles(player_map_path, tile_output_path, tile_level=7):
             big_tile = None
             # Combine two for loop into one
             for tx, ty in itertools.product(range(16), range(16)):
-                tile_data = reader.tiles.get(index_from_xy(x * 16 + tx - tile_range / 2, y * 16 + ty - tile_range / 2))
+                world_txy = (x * 16 + tx - tile_range / 2, y * 16 + ty - tile_range / 2)
+                tile_data = reader.tiles.get(index_from_xy(world_txy[0], world_txy[1]))
                 if not tile_data is None:
+                    used_tiles += 1
+                    minmax_tile = [(min(minmax_tile[0][0], world_txy[0]), min(minmax_tile[0][1], world_txy[1])),
+                                   (max(minmax_tile[1][0], world_txy[0]), max(minmax_tile[1][1], world_txy[1]))]
                     # Add this tile to big tile
                     # Create empty big tile if not exists
                     if big_tile is None:
@@ -122,6 +128,9 @@ def create_tiles(player_map_path, tile_output_path, tile_level=7):
                 png_path = os.path.join(x_path, str(2**tile_level - y)+".png")
                 big_tile = ImageOps.flip(big_tile)
                 big_tile.save(png_path, "png")
+    print "Min max tiles minx:", minmax_tile[0][0], " maxx:", minmax_tile[1][0],\
+          "miny:", minmax_tile[0][1], " maxy: ", minmax_tile[1][1]
+    print "Tiles used / total read", used_tiles, " / ", len(reader.tiles)
 
 
 def read_folder(path):
