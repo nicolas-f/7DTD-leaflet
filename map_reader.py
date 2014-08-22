@@ -62,6 +62,8 @@ class MapReader:
                         chunk = "".join([chr(band) for pixel in chunk for band in pixel])
                         self.tiles[tiles_index[i]] = chunk
                         new_tiles += 1
+                    else:
+                        curs.seek(curs.tell() + 512)
                 print "New tiles :", new_tiles
             else:
                 self.tiles = dict.fromkeys(tiles_index + self.tiles.keys())
