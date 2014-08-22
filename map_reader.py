@@ -72,7 +72,7 @@ class MapReader:
 def tile(tile_data, png_path):
     tile_im = Image.frombuffer('RGB', (16, 16), tile_data, 'raw', 'RGB', 0, 1)
     tile_im.save(png_path)
-def create_tiles(player_map_path, tile_output_path, tile_level=7):
+def create_tiles(player_map_path, tile_output_path, tile_level=8):
     """
     Read all .map files and create a leaflet tile folder
     @param player_map_path array of folder name where are stored map ex:C:\Users\UserName\Documents\7 Days To Die\Saves\
