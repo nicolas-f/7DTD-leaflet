@@ -20,7 +20,7 @@
 
 from struct import unpack
 import os
-from PIL import Image
+from PIL import Image, ImageOps
 import itertools
 
 ##
@@ -117,7 +117,8 @@ def create_tiles(player_map_path, tile_output_path, tile_level=7):
                     if not os.path.exists(x_path):
                         os.mkdir(x_path)
                         x_dir_make = True
-                png_path = os.path.join(x_path, str(y)+".png")
+                png_path = os.path.join(x_path, str(2**tile_level - y)+".png")
+                big_tile = ImageOps.flip(big_tile)
                 big_tile.save(png_path, "png")
 
 
@@ -125,5 +126,5 @@ def read_folder(path):
     map_files = [os.path.join(path, file_name) for file_name in os.listdir(path) if file_name.endswith(".map")]
     map_files.sort(key=lambda file_path: -os.stat(file_path).st_mtime)
     return map_files
-create_tiles(read_folder("E:\\github\\Player")[:1],
+create_tiles(read_folder("E:\\github\\Player"),
              "tiles")
