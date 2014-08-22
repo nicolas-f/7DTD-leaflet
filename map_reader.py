@@ -20,6 +20,7 @@
 
 from struct import unpack
 import os
+# Need Pillow https://pillow.readthedocs.org/en/latest/
 from PIL import Image, ImageOps
 import itertools
 
@@ -72,7 +73,16 @@ class MapReader:
 def tile(tile_data, png_path):
     tile_im = Image.frombuffer('RGB', (16, 16), tile_data, 'raw', 'RGB', 0, 1)
     tile_im.save(png_path)
+
+
 def create_tiles(player_map_path, tile_output_path, tile_level=8):
+    """
+     Call base tile and intermediate zoom tiles
+    """
+    create_base_tiles(player_map_path, tile_output_path, tile_level)
+    create_low_zoom_tiles(tile_output_path, tile_level)
+
+def create_base_tiles(player_map_path, tile_output_path, tile_level):
     """
     Read all .map files and create a leaflet tile folder
     @param player_map_path array of folder name where are stored map ex:C:\Users\UserName\Documents\7 Days To Die\Saves\
@@ -132,6 +142,12 @@ def create_tiles(player_map_path, tile_output_path, tile_level=8):
           "miny:", minmax_tile[0][1], " maxy: ", minmax_tile[1][1]
     print "Tiles used / total read", used_tiles, " / ", len(reader.tiles)
 
+
+def create_low_zoom_tiles(tile_output_path, tile_level):
+    """
+        Merge 4 tiles of 256x256 into a big 512x512 tile then resize to 256x256
+    """
+    pass
 
 def read_folder(path):
     map_files = [os.path.join(path, file_name) for file_name in os.listdir(path) if file_name.endswith(".map")]
