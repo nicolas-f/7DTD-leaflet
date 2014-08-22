@@ -21,6 +21,7 @@
 from struct import unpack
 import os
 from PIL import Image
+import itertools
 
 ##
 # Convert X Y position to MAP file index
@@ -66,7 +67,7 @@ class MapReader:
                 self.tiles = dict.fromkeys(tiles_index + self.tiles.keys())
 
 
-def write_tile(tile_data, png_path):
+def tile(tile_data, png_path):
     tile_im = Image.frombuffer('RGB', (16, 16), tile_data, 'raw', 'RGB', 0, 1)
     tile_im.save(png_path)
 def create_tiles(player_map_path, tile_output_path, tile_level=7):
@@ -88,20 +89,6 @@ def create_tiles(player_map_path, tile_output_path, tile_level=7):
         os.mkdir(z_path)
     #compute min-max X Y
     tile_range = 2**tile_level*16
-    # keys = reader.tiles.keys()
-    # index_tiles = {}
-    # for x in range(-(tile_range/2), (tile_range/2)):
-    #     for y in range(-(tile_range/2), (tile_range/2)):
-    #         index_tiles[index_from_xy(x, y)] = (x, y)
-    # xmin = tile_range
-    # ymin = tile_range
-    # xmax = -1
-    # ymax = -tile_range
-    # xkeys = [index_tiles.get(key, (None, None))[0] for key in keys if key in index_tiles]
-    # ykeys = [index_tiles.get(key, (None, None))[1] for key in keys if key in index_tiles]
-    # print "Map bounds :", -(tile_range/2),"x", tile_range/2
-    # print "Minx:", min(xkeys)," maxx:", max(xkeys)
-    # print "Miny:", min(ykeys)," maxy:", max(ykeys)
     # iterate on x
     for x in range(2**tile_level):
         print "Write tile X:", x + 1, " of ", 2**tile_level
@@ -109,24 +96,34 @@ def create_tiles(player_map_path, tile_output_path, tile_level=7):
         x_path = os.path.join(z_path, str(x))
         for y in range(2**tile_level):
             # Fetch 256 tiles
-            pass
-    #     x_dir_make = False
-    #     x_path = os.path.join(z_path, str(x + 2**tile_level/2))
-    #     for y in range(-(2**tile_level/2), (2**tile_level/2)):
-    #         tile_data = reader.tiles.get(index_from_xy(x,(2**tile_level/2) - y), None)
-    #         if tile_data is not None:
-    #             # Create Dirs if not exists
-    #             if not x_dir_make:
-    #                 if not os.path.exists(x_path):
-    #                     os.mkdir(x_path)
-    #                     x_dir_make = True
-    #             png_path = os.path.join(x_path, str(y + 2**tile_level/2)+".png")
-    #             write_tile(tile_data, png_path)
+            big_tile = None
+            # Combine two for loop into one
+            for tx, ty in itertools.product(range(16), range(16)):
+                tile_data = reader.tiles.get(index_from_xy(x * 16 + tx - tile_range / 2, y * 16 + ty - tile_range / 2))
+                if not tile_data is None:
+                    # Add this tile to big tile
+                    # Create empty big tile if not exists
+                    if big_tile is None:
+                        big_tile = Image.new("RGB", (256, 256))
+                    # convert image string into pil image
+                    tile_im = Image.frombuffer('RGB', (16, 16), tile_data, 'raw', 'RGB', 0, 1)
+                    # Push this tile into the big one
+                    big_tile.paste(tile_im, (tx * 16, ty * 16))
+            # All 16pix tiles of this big tile has been copied into big tile
+            # Time to save big tile
+            if not big_tile is None:
+                # Create Dirs if not exists
+                if not x_dir_make:
+                    if not os.path.exists(x_path):
+                        os.mkdir(x_path)
+                        x_dir_make = True
+                png_path = os.path.join(x_path, str(y)+".png")
+                big_tile.save(png_path, "png")
 
 
 def read_folder(path):
     map_files = [os.path.join(path, file_name) for file_name in os.listdir(path) if file_name.endswith(".map")]
     map_files.sort(key=lambda file_path: -os.stat(file_path).st_mtime)
     return map_files
-create_tiles(read_folder("E:\\github\\Player"),
+create_tiles(read_folder("E:\\github\\Player")[:1],
              "tiles")

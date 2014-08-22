@@ -14,7 +14,7 @@
 <script src="leaflet.js"></script>
 <script src='leaflet-omnivore.min.js'></script>
 <script>
-    var map = L.map('map').setView([68.27142, 70.12573], 4);
+    var map = L.map('map').setView([-31.30672, 7.3938], 7);
     var players = []
     /*
     var imageUrl = 'NavezganeMap.png',
@@ -25,7 +25,7 @@
 
     L.imageOverlay(imageUrl, imageBounds).addTo(map);
     */
-    L.tileLayer('tiles/{z}/{x}/{y}.gif', {minZoom : 8, maxNativeZoom : 8}).addTo(map);
+    L.tileLayer('tiles/{z}/{x}/{y}.png', {minZoom : 7, maxNativeZoom : 7}).addTo(map);
     var popup = L.popup();
 
     function onMapClick(e) {
