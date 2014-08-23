@@ -157,10 +157,10 @@ def create_low_zoom_tiles(tile_output_path, tile_level):
         orig_tile = (tile_to_process[0] - tile_to_process[0] % 2, tile_to_process[1] - tile_to_process[1] % 2)
         # compute the index of the 4 tiles
         tiles = [orig_tile, #bottom left
-                 (orig_tile[0], orig_tile[1] + 1), #bottom right
-                 (orig_tile[0] + 1, orig_tile[1]), #top left
+                 (orig_tile[0] + 1, orig_tile[1]), #bottom right
+                 (orig_tile[0], orig_tile[1] + 1), #top left
                  (orig_tile[0] + 1, orig_tile[1] + 1)] #top right
-        tiles_paste_pos = [(0, 0), (256, 0), (256, 0), (256, 256)]
+        tiles_paste_pos = [(0, 0), (256, 0), (0, 256), (256, 256)]
         # Remove tiles from processing
         missing_tiles = set()
         for tile_index in tiles:
