@@ -69,12 +69,6 @@ class MapReader:
             else:
                 self.tiles = dict.fromkeys(tiles_index + self.tiles.keys())
 
-
-def tile(tile_data, png_path):
-    tile_im = Image.frombuffer('RGB', (16, 16), tile_data, 'raw', 'RGB', 0, 1)
-    tile_im.save(png_path)
-
-
 def create_tiles(player_map_path, tile_output_path, tile_level=8):
     """
      Call base tile and intermediate zoom tiles
@@ -147,11 +141,54 @@ def create_low_zoom_tiles(tile_output_path, tile_level):
     """
         Merge 4 tiles of 256x256 into a big 512x512 tile then resize to 256x256
     """
-    pass
-
+    z_path = os.path.join(tile_output_path, str(tile_level))
+    z_lower_path = os.path.join(tile_output_path, str(tile_level - 1))
+    if not os.path.exists(z_lower_path):
+        os.mkdir(z_lower_path)
+    # list all X folders, convert to int then sort ascending
+    tiles_to_process = set()
+    x_paths = map(lambda x: int(x), os.listdir(z_path))
+    for x_path in sorted(x_paths):
+        for y_path in map(lambda y: int(y[:-4]), os.listdir(os.path.join(z_path, str(x_path)))):
+            tiles_to_process.add((x_path, y_path))
+    while len(tiles_to_process) > 0:
+        tile_to_process = next(iter(tiles_to_process))
+        # compute id of origin tile
+        orig_tile = (tile_to_process[0] - tile_to_process[0] % 2, tile_to_process[1] - tile_to_process[1] % 2)
+        # compute the index of the 4 tiles
+        tiles = [orig_tile, #bottom left
+                 (orig_tile[0], orig_tile[1] + 1), #bottom right
+                 (orig_tile[0] + 1, orig_tile[1]), #top left
+                 (orig_tile[0] + 1, orig_tile[1] + 1)] #top right
+        tiles_paste_pos = [(0, 0), (256, 0), (256, 0), (256, 256)]
+        # Remove tiles from processing
+        missing_tiles = set()
+        for tile_index in tiles:
+            if tile_index in tiles_to_process:
+                tiles_to_process.remove(tile_index)
+            else:
+                missing_tiles.add(tile_index)
+        lower_zoom_image = Image.new("RGB", (512, 512))
+        for tile_index, paste_pos in zip(*[tiles, tiles_paste_pos]):
+            if tile_index not in missing_tiles:
+                # Compute path
+                tile_index_path = os.path.join(z_path, str(tile_index[0]), str(tile_index[1])+".png")
+                tile_im = Image.open(tile_index_path)
+                # Paste in big image
+                lower_zoom_image.paste(tile_im, paste_pos)
+        # Dezoom the big tile
+        lower_zoom_image = lower_zoom_image.resize((256, 256), Image.BICUBIC)
+        # Save in lower zoom folder
+        x_lower_path = os.path.join(z_lower_path, str(orig_tile[0] / 2))
+        if not os.path.exists(x_lower_path):
+            os.mkdir(x_lower_path)
+        lower_zoom_image.save(os.path.join(x_lower_path, str(orig_tile[1] / 2)+".png"))
 def read_folder(path):
+    if not os.path.exists(path):
+        os.mkdir(path)
     map_files = [os.path.join(path, file_name) for file_name in os.listdir(path) if file_name.endswith(".map")]
     map_files.sort(key=lambda file_path: -os.stat(file_path).st_mtime)
     return map_files
-create_tiles(read_folder("E:\\github\\Player"),
-             "tiles")
+#create_tiles(read_folder("E:\\github\\Player"),
+#             "tiles")
+create_low_zoom_tiles("tiles", 8)
