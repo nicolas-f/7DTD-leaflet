@@ -74,6 +74,8 @@ def create_tiles(player_map_path, tile_output_path, tile_level=8):
     """
      Call base tile and intermediate zoom tiles
     """
+    if not os.path.exists(tile_output_path):
+        os.mkdir(tile_output_path)
     create_base_tiles(player_map_path, tile_output_path, tile_level)
     create_low_zoom_tiles(tile_output_path, tile_level)
 
@@ -187,12 +189,10 @@ def create_low_zoom_tiles(tile_output_path, tile_level_native):
                 os.mkdir(x_lower_path)
             lower_zoom_image.save(os.path.join(x_lower_path, str(orig_tile[1] / 2)+".png"))
 def read_folder(path):
-    if not os.path.exists(path):
-        os.mkdir(path)
     map_files = [os.path.join(path, file_name) for file_name in os.listdir(path) if file_name.endswith(".map")]
     map_files.sort(key=lambda file_path: -os.stat(file_path).st_mtime)
     return map_files
 
 
-create_tiles(read_folder("E:\\github\\Player"),
+create_tiles(read_folder("C:\\Users\\CUMU\\Documents\\7 Days To Die\\Saves\\Random Gen\\ver91\\Player"),
              "tiles")

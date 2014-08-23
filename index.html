@@ -26,7 +26,7 @@
 
     L.imageOverlay(imageUrl, imageBounds).addTo(map);
     */
-    L.tileLayer('tiles/{z}/{x}/{y}.png', {maxNativeZoom : 8, continuousWorld: 'false'}).addTo(map);
+    L.tileLayer('tiles/{z}/{x}/{y}.png', {maxNativeZoom : 8, continuousWorld: 'false', attribution: '©The Fun Pimps'}).addTo(map);
     var popup = L.popup();
 
     function onMapClick(e) {
