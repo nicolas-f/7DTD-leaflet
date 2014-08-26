@@ -16,7 +16,6 @@
 <script src="js/leaflet.js"></script>
 <script src='js/leaflet-omnivore.min.js'></script>
 <script src='js/L.Control.MousePosition.js'></script>
-<script src=''></script>
 <script>
     var map = L.map('map').setView([0, 0], 4);
     var players = []
@@ -61,7 +60,17 @@
             return container;
         }
     });
-    L.control.mousePosition().addTo(map);
+
+    L.control.mousePosition({
+    lngFormatter : function(pos) {
+        // lng to W E
+        return pos + (pos <=0 ? " W" : " E");
+    },
+    latFormatter : function(pos) {
+        // lng to S N
+        return pos  + (pos >=0 ? " N" : " S");
+    }
+    }).addTo(map);
     map.addControl(new MyControl());
 </script>
 </body>
