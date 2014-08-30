@@ -23,6 +23,9 @@ import os
 # Need Pillow https://pillow.readthedocs.org/en/latest/
 from PIL import Image, ImageOps
 import itertools
+import getopt
+import sys
+import os
 
 ##
 # Convert X Y position to MAP file index
@@ -198,5 +201,47 @@ def read_folder(path):
     return map_files
 
 
-create_tiles(read_folder("C:\\Users\\CUMU\\Documents\\7 Days To Die\\Saves\\Random Gen\\ver91\\Player"),
-             "tiles")
+def usage():
+    print "Usage:"
+    print " -m \"C:\\Users..\":\t The folder that contain .map files"
+    print " -t \"tiles\":\t\t The folder that will contain tiles (Optional)"
+    print " -z 8:\t\t\t\t Zoom level 4-n. Number of tiles to extract around position 0,0 of map." \
+          " It is in the form of 4^n tiles.It will extract a grid of 2^n*16 tiles on each side.(Optional)"
+
+
+def main():
+    game_player_path = None
+    tile_path = "tiles"
+    tile_zoom = 8
+    # parse command line options
+    try:
+        for opt, value in getopt.getopt(sys.argv[1:], "g:")[0]:
+            if opt == "-g":
+                game_player_path = value
+            elif opt == "-t":
+                tile_path = value
+            elif opt == "-z":
+                tile_zoom = int(value)
+    except getopt.error, msg:
+        usage()
+        exit(-1)
+    if game_player_path is None:
+        # Show gui to select tile folder (windows only)
+        import tkFileDialog
+        from Tkinter import Tk
+        root = Tk()
+        root.withdraw()
+        opts = {"initialdir": os.path.expanduser("~\\Documents\\7 Days To Die\\Saves\\Random Gen\\"),
+                "title": "Choose player path that countain .map files"}
+        game_player_path = tkFileDialog.askdirectory(**opts)
+    if len(game_player_path) == 0:
+        print "You must define the .map game path"
+        exit(-1)
+    map_files = read_folder(game_player_path)
+    if len(map_files) == 0:
+        print "No .map files found in ", game_player_path
+        exit(-1)
+    create_tiles(map_files, tile_path, tile_zoom)
+
+if __name__ == "__main__":
+    main()
