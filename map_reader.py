@@ -70,7 +70,7 @@ class MapReader:
                 self.tiles = dict.fromkeys(tiles_index + self.tiles.keys())
 
 
-def create_tiles(player_map_path, tile_output_path, tile_level=4):
+def create_tiles(player_map_path, tile_output_path, tile_level=8):
     """
      Call base tile and intermediate zoom tiles
     """
