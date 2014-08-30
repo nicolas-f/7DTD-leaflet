@@ -17,10 +17,36 @@
 <script src='js/leaflet-omnivore.min.js'></script>
 <script src='js/L.Control.MousePosition.js'></script>
 <script>
-    var map = L.map('map').setView([0, 0], 4);
+native_zoom_level = 4;
+
+// Apply Alloc's coordinate transformation
+// http://7daystodie.com/forums/member.php?45-Alloc
+myProjection = {
+	project: function (latlng) {
+		return new L.Point(latlng.lng / Math.pow(2, native_zoom_level), latlng.lat / Math.pow(2, native_zoom_level));
+	},
+
+	unproject: function (point) {
+		return new L.LatLng(point.y * Math.pow(2, native_zoom_level), point.x * Math.pow(2, native_zoom_level));
+	}
+};
+
+myCRS = L.extend({}, L.CRS.Simple, {
+	projection: myProjection,
+	transformation: new L.Transformation(1, 0, -1, 0),
+
+	scale: function (zoom) {
+		return Math.pow(2, zoom);
+	}
+});
+    var map = L.map('map', {
+    zoomControl: true,
+    attributionControl: false,
+    crs: myCRS
+}).setView([0, 0], native_zoom_level / 2);
     var players = []
 
-    L.tileLayer('tiles/{z}/{x}/{y}.png', {maxNativeZoom : 8, continuousWorld: 'false', attribution: '©The Fun Pimps'}).addTo(map);
+    L.tileLayer('tiles/{z}/{x}/{y}.png', {maxNativeZoom : native_zoom_level, continuousWorld: 'true', attribution: '©The Fun Pimps'}).addTo(map);
 
     var sel = document.createElement("select");
     var options = {
@@ -64,11 +90,11 @@
     L.control.mousePosition({
     lngFormatter : function(pos) {
         // lng to W E
-        return pos + (pos <=0 ? " W" : " E");
+        return Math.abs(Math.round(pos)) + (pos <=0 ? " W" : " E");
     },
     latFormatter : function(pos) {
         // lng to S N
-        return pos  + (pos >=0 ? " N" : " S");
+        return Math.abs(Math.round(pos))  + (pos >=0 ? " N" : " S");
     }
     }).addTo(map);
     map.addControl(new MyControl());

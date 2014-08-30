@@ -70,7 +70,7 @@ class MapReader:
                 self.tiles = dict.fromkeys(tiles_index + self.tiles.keys())
 
 
-def create_tiles(player_map_path, tile_output_path, tile_level=8):
+def create_tiles(player_map_path, tile_output_path, tile_level=4):
     """
      Call base tile and intermediate zoom tiles
     """
@@ -97,14 +97,15 @@ def create_base_tiles(player_map_path, tile_output_path, tile_level):
     if not os.path.exists(z_path):
         os.mkdir(z_path)
     #compute min-max X Y
-    tile_range = 2**tile_level*16
+    big_tile_range = 2**tile_level
+    tile_range = big_tile_range*16
     # iterate on x
     minmax_tile = [(tile_range, tile_range),(-tile_range, -tile_range)]
     used_tiles = 0
     for x in range(2**tile_level):
         print "Write tile X:", x + 1, " of ", 2**tile_level
         x_dir_make = False
-        x_path = os.path.join(z_path, str(x))
+        x_path = os.path.join(z_path, str(x - big_tile_range / 2))
         for y in range(2**tile_level):
             # Fetch 256 tiles
             big_tile = None
@@ -132,7 +133,7 @@ def create_base_tiles(player_map_path, tile_output_path, tile_level):
                     if not os.path.exists(x_path):
                         os.mkdir(x_path)
                         x_dir_make = True
-                png_path = os.path.join(x_path, str(2**tile_level - y)+".png")
+                png_path = os.path.join(x_path, str((big_tile_range - y - 1) - big_tile_range / 2)+".png")
                 big_tile = ImageOps.flip(big_tile)
                 big_tile.save(png_path, "png")
     print "Min max tiles minx:", minmax_tile[0][0], " maxx:", minmax_tile[1][0],\
@@ -184,10 +185,13 @@ def create_low_zoom_tiles(tile_output_path, tile_level_native):
             # Dezoom the big tile
             lower_zoom_image = lower_zoom_image.resize((256, 256), Image.BICUBIC)
             # Save in lower zoom folder
-            x_lower_path = os.path.join(z_lower_path, str(orig_tile[0] / 2))
+            x_lower_path = os.path.join(z_lower_path, str(((orig_tile[0] + (2 ** tile_level) / 2) / 2)
+                                                          - (2 ** (tile_level - 1)) / 2))
             if not os.path.exists(x_lower_path):
                 os.mkdir(x_lower_path)
-            lower_zoom_image.save(os.path.join(x_lower_path, str(orig_tile[1] / 2)+".png"))
+            lower_zoom_image.save(os.path.join(x_lower_path, str(((orig_tile[1] + (2 ** tile_level) / 2) / 2)
+                                                                 - (2 ** (tile_level - 1)) / 2) + ".png"))
+
 def read_folder(path):
     map_files = [os.path.join(path, file_name) for file_name in os.listdir(path) if file_name.endswith(".map")]
     map_files.sort(key=lambda file_path: -os.stat(file_path).st_mtime)
