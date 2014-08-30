@@ -23,18 +23,12 @@ L.Control.MousePosition = L.Control.extend({
   },
 
   _onMouseMove: function (e) {
-    var lng = this.options.lngFormatter ? this.options.lngFormatter(this.fixLng(e.latlng.lng)) : L.Util.formatNum(this.fixLng(e.latlng.lng), this.options.numDigits);
+    var lng = this.options.lngFormatter ? this.options.lngFormatter(e.latlng.lng) : L.Util.formatNum(e.latlng.lng, this.options.numDigits);
     var lat = this.options.latFormatter ? this.options.latFormatter(e.latlng.lat) : L.Util.formatNum(e.latlng.lat, this.options.numDigits);
     var value = this.options.lngFirst ? lng + this.options.separator + lat : lat + this.options.separator + lng;
     var prefixAndValue = this.options.prefix + ' ' + value;
     this._container.innerHTML = prefixAndValue;
   },
-  
-  fixLng: function (lng) {
-    if (lng > 180) lng = -180 + (lng-180);
-    if (lng < -180) lng = 180 + (lng+180);
-    return lng;
-  }
 
 });
 
