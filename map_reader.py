@@ -29,7 +29,7 @@ import itertools
 
 
 def index_from_xy(x, y):
-    return y << 16 | (x & 65535)
+    return (y - 16) << 16 | (x & 65535)
 
 
 class MapReader:
@@ -133,7 +133,7 @@ def create_base_tiles(player_map_path, tile_output_path, tile_level):
                     if not os.path.exists(x_path):
                         os.mkdir(x_path)
                         x_dir_make = True
-                png_path = os.path.join(x_path, str((big_tile_range - y - 1) - big_tile_range / 2)+".png")
+                png_path = os.path.join(x_path, str((big_tile_range - y) - big_tile_range / 2)+".png")
                 big_tile = ImageOps.flip(big_tile)
                 big_tile.save(png_path, "png")
     print "Min max tiles minx:", minmax_tile[0][0], " maxx:", minmax_tile[1][0],\
