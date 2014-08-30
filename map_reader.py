@@ -19,13 +19,17 @@
 # @author Nicolas Grimaud ketchu13@hotmail.com
 
 from struct import unpack
-import os
-# Need Pillow https://pillow.readthedocs.org/en/latest/
-from PIL import Image, ImageOps
 import itertools
 import getopt
 import sys
 import os
+try:
+    from PIL import Image, ImageOps
+except ImportError:
+    print "This program require:"
+    print "Pillow https://pillow.readthedocs.org/en/latest/"
+    raw_input()
+    exit(-1)
 
 ##
 # Convert X Y position to MAP file index
@@ -224,6 +228,7 @@ def main():
                 tile_zoom = int(value)
     except getopt.error, msg:
         usage()
+        raw_input()
         exit(-1)
     if game_player_path is None:
         # Show gui to select tile folder (windows only)
