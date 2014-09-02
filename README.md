@@ -25,14 +25,14 @@ Open index.html in your brower.
 You can also use it in command line.
 
 ```bash
-python map_reader.py -m "C:\Users\CUMU\Documents\7 Days To Die\Saves\Random Gen\ver91\Player"
+python map_reader.py -g "C:\Users\CUMU\Documents\7 Days To Die\Saves\Random Gen\ver91\Player"
 ```
 
 Usage
 =============
 
 ```
--m "C:\\Users..\" The folder that contain .map files
+-g "C:\\Users..\" The folder that contain .map files
 -t "tiles" The folder that will contain tiles (Optional)
 -z 8 Zoom level 4-n. Number of tiles to extract around position 0,0 of map. It is in the form of 4^n tiles.It will extract a grid of 2^n*16 tiles on each side.(Optional)
 ```
