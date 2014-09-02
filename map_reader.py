@@ -18,7 +18,7 @@
 # @author Nicolas Fortin github@nettrader.fr https://github.com/nicolas-f
 # @author Nicolas Grimaud ketchu13@hotmail.com
 
-from struct import unpack
+import struct
 import itertools
 import getopt
 import sys
@@ -52,22 +52,24 @@ class MapReader:
             curs.read(1)
             #######################
             # read index
-            num = unpack("I", curs.read(4))[0]
+            num = struct.unpack("I", curs.read(4))[0]
             print "Tiles :", num
             # read tiles position
-            tiles_index = [unpack("i", curs.read(4))[0] for i in xrange(num)]
+            tiles_index = [struct.unpack("i", curs.read(4))[0] for i in xrange(num)]
             #######################
             # read tiles pixels
             new_tiles = 0
+            # A tile is 256 unsigned integer
+            fmt = "H" * 256
             if not index_only:
                 curs.seek(524297)
                 for i in xrange(num):
                     if not skip_existing or tiles_index[i] not in self.tiles:
-                        #extract 16-bytes pixel then convert to RGB component
-                        chunk = [[[((rgb & 0x7C00) >> 10 << 3), ((rgb & 0x3E0) >> 5) << 3, (rgb & 0x1F) << 3]
-                                 for rgb in unpack("H", curs.read(2))][0] for c in xrange(256)]
+                        # extract 16-bytes pixel then convert to RGB component
+                        chunk = "".join([chr((rgb & 0x7C00) >> 10 << 3) +
+                                         chr(((rgb & 0x3E0) >> 5) << 3) +
+                                         chr((rgb & 0x1F) << 3) for rgb in struct.unpack(fmt, curs.read(512))])
                         #flatten pixels and convert to char
-                        chunk = "".join([chr(band) for pixel in chunk for band in pixel])
                         self.tiles[tiles_index[i]] = chunk
                         new_tiles += 1
                     else:
@@ -97,8 +99,11 @@ def create_base_tiles(player_map_path, tile_output_path, tile_level):
     reader = MapReader()
     # Read and merge all tiles in .map files
     for i, map_file in enumerate(player_map_path):
-        print "Read map file ", i + 1, "/", len(player_map_path)
-        reader.import_file(map_file, False)
+        print "Read map file ", os.path.basename(map_file), i + 1, "/", len(player_map_path)
+        try:
+            reader.import_file(map_file, False)
+        except struct.error:
+            print "Skip "+os.path.basename(map_file)+" may be already used by another process"
     # make zoom folder
     z_path = os.path.join(tile_output_path, str(tile_level))
     if not os.path.exists(z_path):
@@ -231,14 +236,19 @@ def main():
         raw_input()
         exit(-1)
     if game_player_path is None:
-        # Show gui to select tile folder (windows only)
-        import tkFileDialog
-        from Tkinter import Tk
-        root = Tk()
-        root.withdraw()
-        opts = {"initialdir": os.path.expanduser("~\\Documents\\7 Days To Die\\Saves\\Random Gen\\"),
-                "title": "Choose player path that countain .map files"}
-        game_player_path = tkFileDialog.askdirectory(**opts)
+        # Show gui to select tile folder
+        try:
+            import tkFileDialog
+            from Tkinter import Tk
+            root = Tk()
+            root.withdraw()
+            opts = {"initialdir": os.path.expanduser("~\\Documents\\7 Days To Die\\Saves\\Random Gen\\"),
+                    "title": "Choose player path that countain .map files"}
+            game_player_path = tkFileDialog.askdirectory(**opts)
+        except ImportError:
+            #Headless environment
+            usage()
+            exit(-1)
     if len(game_player_path) == 0:
         print "You must define the .map game path"
         exit(-1)

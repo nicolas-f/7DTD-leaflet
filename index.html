@@ -85,7 +85,9 @@ myCRS = L.extend({}, L.CRS.Simple, {
             return container;
         }
     });
+    map.addControl(new MyControl());
 
+    // Add mouse position
     L.control.mousePosition({
     lngFormatter : function(pos) {
         // lng to W E
@@ -96,7 +98,18 @@ myCRS = L.extend({}, L.CRS.Simple, {
         return Math.abs(Math.round(pos))  + (pos >=0 ? " N" : " S");
     }
     }).addTo(map);
-    map.addControl(new MyControl());
+
+    // Add overlay region tiles
+    //var canvasTiles = L.tileLayer.canvas({maxNativeZoom : native_zoom_level, continuousWorld: 'false'});
+    //canvasTiles.drawTile = function(canvas, tilePoint, zoom) {
+    //    var ctx = canvas.getContext('2d');
+    //      ctx.fillStyle="#FF0000";
+    //      ctx.fillText(tilePoint.toString()+" "+zoom, 50, 50);
+    //      ctx.globalAlpha = 0.2;
+    //      var tileSize = this.options.tileSize;
+    //};
+
+    //canvasTiles.addTo(map);
 </script>
 </body>
 </html>
