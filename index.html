@@ -99,17 +99,48 @@ myCRS = L.extend({}, L.CRS.Simple, {
     }
     }).addTo(map);
 
-    // Add overlay region tiles
-    //var canvasTiles = L.tileLayer.canvas({maxNativeZoom : native_zoom_level, continuousWorld: 'false'});
-    //canvasTiles.drawTile = function(canvas, tilePoint, zoom) {
-    //    var ctx = canvas.getContext('2d');
-    //      ctx.fillStyle="#FF0000";
-    //      ctx.fillText(tilePoint.toString()+" "+zoom, 50, 50);
-    //      ctx.globalAlpha = 0.2;
-    //      var tileSize = this.options.tileSize;
-    //};
+    // Add overlay region tiles rectangles and text
+    var canvasTiles = L.tileLayer.canvas({continuousWorld: 'false'});
+    canvasTiles.drawTile = function(canvas, tilePoint, zoom) {
+        if(zoom >= native_zoom_level /2 && zoom <= native_zoom_level - 1) {
+            var ctx = canvas.getContext('2d');
+              ctx.globalAlpha = 0.2;
+              var zoomFactor = Math.pow(2,native_zoom_level) / Math.pow(2,zoom);
+              var tileSize = 512 / zoomFactor;
+              ctx.fillStyle="white";
+              ctx.strokeStyle="red";
+              ctx.font="12px Georgia";
+              ctx.lineWidth="2";
+              for(i=0; i < zoomFactor; i++) {
+                for(j=0; j < zoomFactor; j++) {
+                    ctx.rect(i*tileSize,j*tileSize,(i + 1)*tileSize,(j+1)*tileSize);
+                }
+              }
+              ctx.stroke();
+              ctx.globalAlpha = 0.8;
+              ctx.fillStyle="white";
+              ctx.shadowBlur = 1;
+              ctx.shadowColor = "black";
+              for(i=0; i < zoomFactor; i++) {
+                for(j=0; j < zoomFactor; j++) {
+                    var txt = (tilePoint.x * (zoomFactor / 2) + i)+","+(-tilePoint.y * (zoomFactor / 2) - j - 1 )
+                    var txt_width = ctx.measureText(txt).width
+                    var txtOffset = 0
+                    if(zoomFactor == 1) {
+                        txtOffset = -(tileSize / 2)
+                    }
+                    ctx.shadowOffsetX = 1;
+                    ctx.shadowOffsetY = -1;
+                    ctx.fillText(txt, i*tileSize + tileSize / 2 - txt_width / 2,j*tileSize + tileSize / 2 + 10, tileSize);
+                    ctx.shadowOffsetX = -1;
+                    ctx.shadowOffsetY = 1;
+                    ctx.fillText(txt, i*tileSize + tileSize / 2 - txt_width / 2,j*tileSize + tileSize / 2 + 10, tileSize);
+                }
+              }
+        }
+    };
 
-    //canvasTiles.addTo(map);
+    canvasTiles.addTo(map);
 </script>
 </body>
 </html>
