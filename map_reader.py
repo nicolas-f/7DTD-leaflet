@@ -59,18 +59,12 @@ class MapReader:
             #######################
             # read tiles pixels
             new_tiles = 0
-            # A tile is 256 unsigned integer
-            fmt = "H" * 256
             if not index_only:
                 curs.seek(524297)
                 for i in xrange(num):
                     if not skip_existing or tiles_index[i] not in self.tiles:
-                        # extract 16-bytes pixel then convert to RGB component
-                        chunk = "".join([chr((rgb & 0x7C00) >> 10 << 3) +
-                                         chr(((rgb & 0x3E0) >> 5) << 3) +
-                                         chr((rgb & 0x1F) << 3) for rgb in struct.unpack(fmt, curs.read(512))])
-                        #flatten pixels and convert to char
-                        self.tiles[tiles_index[i]] = chunk
+                        # extract 16-bytes pixel 16*16 tile
+                        self.tiles[tiles_index[i]] = curs.read(512)
                         new_tiles += 1
                     else:
                         curs.seek(curs.tell() + 512)
@@ -134,7 +128,7 @@ def create_base_tiles(player_map_path, tile_output_path, tile_level):
                     if big_tile is None:
                         big_tile = Image.new("RGB", (256, 256))
                     # convert image string into pil image
-                    tile_im = Image.frombuffer('RGB', (16, 16), tile_data, 'raw', 'RGB', 0, 1)
+                    tile_im = Image.frombuffer('RGB', (16, 16), tile_data, 'raw', 'BGR;15', 0, 1)
                     # Push this tile into the big one
                     big_tile.paste(tile_im, (tx * 16, ty * 16))
             # All 16pix tiles of this big tile has been copied into big tile
