@@ -118,8 +118,8 @@ myCRS = L.extend({}, L.CRS.Simple, {
               ctx.strokeStyle="red";
               ctx.font="12px Georgia";
               ctx.lineWidth="2";
-              for(i=0; i < zoomFactor; i++) {
-                for(j=0; j < zoomFactor; j++) {
+              for(i=0; i < zoomFactor / 2; i++) {
+                for(j=0; j < zoomFactor / 2; j++) {
                     ctx.rect(i*tileSize,j*tileSize,(i + 1)*tileSize,(j+1)*tileSize);
                 }
               }
