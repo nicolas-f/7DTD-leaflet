@@ -18,18 +18,25 @@
 # @author Nicolas Fortin github@nettrader.fr https://github.com/nicolas-f
 # @author Nicolas Grimaud ketchu13@hotmail.com
 
-from struct import unpack
-import os
-# Need Pillow https://pillow.readthedocs.org/en/latest/
-from PIL import Image, ImageOps
+import struct
 import itertools
+import getopt
+import sys
+import os
+try:
+    from PIL import Image, ImageOps
+except ImportError:
+    print "This program require:"
+    print "Pillow https://pillow.readthedocs.org/en/latest/"
+    raw_input()
+    exit(-1)
 
 ##
 # Convert X Y position to MAP file index
 
 
 def index_from_xy(x, y):
-    return y << 16 | (x & 65535)
+    return (y - 16) << 16 | (x & 65535)
 
 
 class MapReader:
@@ -45,10 +52,10 @@ class MapReader:
             curs.read(1)
             #######################
             # read index
-            num = unpack("I", curs.read(4))[0]
+            num = struct.unpack("I", curs.read(4))[0]
             print "Tiles :", num
             # read tiles position
-            tiles_index = [unpack("i", curs.read(4))[0] for i in xrange(num)]
+            tiles_index = [struct.unpack("i", curs.read(4))[0] for i in xrange(num)]
             #######################
             # read tiles pixels
             new_tiles = 0
@@ -56,12 +63,8 @@ class MapReader:
                 curs.seek(524297)
                 for i in xrange(num):
                     if not skip_existing or tiles_index[i] not in self.tiles:
-                        #extract 16-bytes pixel then convert to RGB component
-                        chunk = [[[((rgb & 0x7C00) >> 10 << 3), ((rgb & 0x3E0) >> 5) << 3, (rgb & 0x1F) << 3]
-                                 for rgb in unpack("H", curs.read(2))][0] for c in xrange(256)]
-                        #flatten pixels and convert to char
-                        chunk = "".join([chr(band) for pixel in chunk for band in pixel])
-                        self.tiles[tiles_index[i]] = chunk
+                        # extract 16-bytes pixel 16*16 tile
+                        self.tiles[tiles_index[i]] = curs.read(512)
                         new_tiles += 1
                     else:
                         curs.seek(curs.tell() + 512)
@@ -90,21 +93,25 @@ def create_base_tiles(player_map_path, tile_output_path, tile_level):
     reader = MapReader()
     # Read and merge all tiles in .map files
     for i, map_file in enumerate(player_map_path):
-        print "Read map file ", i + 1, "/", len(player_map_path)
-        reader.import_file(map_file, False)
+        print "Read map file ", os.path.basename(map_file), i + 1, "/", len(player_map_path)
+        try:
+            reader.import_file(map_file, False)
+        except struct.error:
+            print "Skip "+os.path.basename(map_file)+" may be already used by another process"
     # make zoom folder
     z_path = os.path.join(tile_output_path, str(tile_level))
     if not os.path.exists(z_path):
         os.mkdir(z_path)
     #compute min-max X Y
-    tile_range = 2**tile_level*16
+    big_tile_range = 2**tile_level
+    tile_range = big_tile_range*16
     # iterate on x
     minmax_tile = [(tile_range, tile_range),(-tile_range, -tile_range)]
     used_tiles = 0
     for x in range(2**tile_level):
         print "Write tile X:", x + 1, " of ", 2**tile_level
         x_dir_make = False
-        x_path = os.path.join(z_path, str(x))
+        x_path = os.path.join(z_path, str(x - big_tile_range / 2))
         for y in range(2**tile_level):
             # Fetch 256 tiles
             big_tile = None
@@ -121,7 +128,7 @@ def create_base_tiles(player_map_path, tile_output_path, tile_level):
                     if big_tile is None:
                         big_tile = Image.new("RGB", (256, 256))
                     # convert image string into pil image
-                    tile_im = Image.frombuffer('RGB', (16, 16), tile_data, 'raw', 'RGB', 0, 1)
+                    tile_im = Image.frombuffer('RGB', (16, 16), tile_data, 'raw', 'BGR;15', 0, 1)
                     # Push this tile into the big one
                     big_tile.paste(tile_im, (tx * 16, ty * 16))
             # All 16pix tiles of this big tile has been copied into big tile
@@ -132,7 +139,7 @@ def create_base_tiles(player_map_path, tile_output_path, tile_level):
                     if not os.path.exists(x_path):
                         os.mkdir(x_path)
                         x_dir_make = True
-                png_path = os.path.join(x_path, str(2**tile_level - y)+".png")
+                png_path = os.path.join(x_path, str((big_tile_range - y) - big_tile_range / 2)+".png")
                 big_tile = ImageOps.flip(big_tile)
                 big_tile.save(png_path, "png")
     print "Min max tiles minx:", minmax_tile[0][0], " maxx:", minmax_tile[1][0],\
@@ -184,15 +191,66 @@ def create_low_zoom_tiles(tile_output_path, tile_level_native):
             # Dezoom the big tile
             lower_zoom_image = lower_zoom_image.resize((256, 256), Image.BICUBIC)
             # Save in lower zoom folder
-            x_lower_path = os.path.join(z_lower_path, str(orig_tile[0] / 2))
+            x_lower_path = os.path.join(z_lower_path, str(((orig_tile[0] + (2 ** tile_level) / 2) / 2)
+                                                          - (2 ** (tile_level - 1)) / 2))
             if not os.path.exists(x_lower_path):
                 os.mkdir(x_lower_path)
-            lower_zoom_image.save(os.path.join(x_lower_path, str(orig_tile[1] / 2)+".png"))
+            lower_zoom_image.save(os.path.join(x_lower_path, str(((orig_tile[1] + (2 ** tile_level) / 2) / 2)
+                                                                 - (2 ** (tile_level - 1)) / 2) + ".png"))
+
 def read_folder(path):
     map_files = [os.path.join(path, file_name) for file_name in os.listdir(path) if file_name.endswith(".map")]
     map_files.sort(key=lambda file_path: -os.stat(file_path).st_mtime)
     return map_files
 
 
-create_tiles(read_folder("C:\\Users\\CUMU\\Documents\\7 Days To Die\\Saves\\Random Gen\\ver91\\Player"),
-             "tiles")
+def usage():
+    print "Usage:"
+    print " -m \"C:\\Users..\":\t The folder that contain .map files"
+    print " -t \"tiles\":\t\t The folder that will contain tiles (Optional)"
+    print " -z 8:\t\t\t\t Zoom level 4-n. Number of tiles to extract around position 0,0 of map." \
+          " It is in the form of 4^n tiles.It will extract a grid of 2^n*16 tiles on each side.(Optional)"
+
+
+def main():
+    game_player_path = None
+    tile_path = "tiles"
+    tile_zoom = 8
+    # parse command line options
+    try:
+        for opt, value in getopt.getopt(sys.argv[1:], "g:")[0]:
+            if opt == "-g":
+                game_player_path = value
+            elif opt == "-t":
+                tile_path = value
+            elif opt == "-z":
+                tile_zoom = int(value)
+    except getopt.error, msg:
+        usage()
+        raw_input()
+        exit(-1)
+    if game_player_path is None:
+        # Show gui to select tile folder
+        try:
+            import tkFileDialog
+            from Tkinter import Tk
+            root = Tk()
+            root.withdraw()
+            opts = {"initialdir": os.path.expanduser("~\\Documents\\7 Days To Die\\Saves\\Random Gen\\"),
+                    "title": "Choose player path that countain .map files"}
+            game_player_path = tkFileDialog.askdirectory(**opts)
+        except ImportError:
+            #Headless environment
+            usage()
+            exit(-1)
+    if len(game_player_path) == 0:
+        print "You must define the .map game path"
+        exit(-1)
+    map_files = read_folder(game_player_path)
+    if len(map_files) == 0:
+        print "No .map files found in ", game_player_path
+        exit(-1)
+    create_tiles(map_files, tile_path, tile_zoom)
+
+if __name__ == "__main__":
+    main()

@@ -6,36 +6,54 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-    <link rel="stylesheet" href="leaflet.css"/>
+    <link rel="stylesheet" href="css/leaflet.css"/>
+    <link rel="stylesheet" href="css/L.Control.MousePosition.css"/>
+    <link rel="stylesheet" href="css/toggle.css"/>
+    <style>
+  body { margin:0; padding:0; }
+  #map { position:absolute; top:0; bottom:0; width:100%; }
+</style>
 </head>
 <body>
 <style>#forkongithub a{background:#000;color:#fff;text-decoration:none;font-family:arial,sans-serif;text-align:center;font-weight:bold;padding:5px 40px;font-size:1rem;line-height:2rem;position:relative;transition:0.5s;}#forkongithub a:hover{background:#c11;color:#fff;}#forkongithub a::before,#forkongithub a::after{content:"";width:100%;display:block;position:absolute;top:1px;left:0;height:1px;background:#fff;}#forkongithub a::after{bottom:1px;top:auto;}@media screen and (min-width:800px){#forkongithub{position:absolute;display:block;top:0;right:0;width:200px;overflow:hidden;height:200px;z-index:9999;}#forkongithub a{width:200px;position:absolute;top:60px;right:-60px;transform:rotate(45deg);-webkit-transform:rotate(45deg);-ms-transform:rotate(45deg);-moz-transform:rotate(45deg);-o-transform:rotate(45deg);box-shadow:4px 4px 10px rgba(0,0,0,0.8);}}</style><span id="forkongithub"><a href="https://github.com/nicolas-f/7DTD-leaflet">Fork me on GitHub</a></span>
-<div id="map" style="width: 800px; height: 600px"></div>
+<nav id='menu-ui' class='menu-ui'></nav>
+<div id="map"></div>
 
-<script src="leaflet.js"></script>
-<script src='leaflet-omnivore.min.js'></script>
+<script src="js/leaflet.js"></script>
+<script src='js/leaflet-omnivore.min.js'></script>
+<script src='js/L.Control.MousePosition.js'></script>
 <script>
-    var map = L.map('map').setView([0, 0], 4);
+native_zoom_level = 8;
+
+// Apply Alloc's coordinate transformation
+// http://7daystodie.com/forums/member.php?45-Alloc
+myProjection = {
+	project: function (latlng) {
+		return new L.Point((latlng.lng - 1) / Math.pow(2, native_zoom_level), (latlng.lat + 2) / Math.pow(2, native_zoom_level));
+	},
+
+	unproject: function (point) {
+		return new L.LatLng(point.y * Math.pow(2, native_zoom_level) + 1, point.x * Math.pow(2, native_zoom_level) - 2);
+	}
+};
+
+myCRS = L.extend({}, L.CRS.Simple, {
+	projection: myProjection,
+
+	scale: function (zoom) {
+		return Math.pow(2, zoom);
+	}
+});
+    var map = L.map('map', {
+    zoomControl: true,
+    attributionControl: false,
+    crs: myCRS
+}).setView([0, 0], native_zoom_level / 2);
+    var layers = document.getElementById('menu-ui');
     var players = []
-    /*
-    var imageUrl = 'NavezganeMap.png',
-        imageBounds = [
-            [-1, -1],
-            [1, 1]
-        ];
 
-    L.imageOverlay(imageUrl, imageBounds).addTo(map);
-    */
-    L.tileLayer('tiles/{z}/{x}/{y}.png', {maxNativeZoom : 8, continuousWorld: 'false', attribution: '©The Fun Pimps'}).addTo(map);
-    var popup = L.popup();
+    L.tileLayer('tiles/{z}/{x}/{y}.png', {maxNativeZoom : native_zoom_level, continuousWorld: 'false', attribution: '©The Fun Pimps'}).addTo(map);
 
-    function onMapClick(e) {
-        popup
-            .setLatLng(e.latlng)
-            .setContent("You clicked the map at " + e.latlng.toString())
-            .openOn(map);
-    }
-    map.on('click', onMapClick);
     var sel = document.createElement("select");
     var options = {
         filter: function(cols) {
@@ -54,7 +72,7 @@
         }
     };
     var myLayer = omnivore.csv('players/tracks.csv', options);
-    myLayer.addTo(map);
+    addLayer(myLayer, 'Player path', 1);
     sel.onchange = function() {
         // If the user change player recreate the layer
         map.removeLayer(myLayer);
@@ -64,7 +82,7 @@
     // ADD player selection control
     var MyControl = L.Control.extend({
         options: {
-            position: 'topright'
+            position: 'topleft'
         },
         onAdd: function(map) {
             // create the control container with a particular class name
@@ -74,8 +92,92 @@
             return container;
         }
     });
-
     map.addControl(new MyControl());
+
+    // Add mouse position
+    L.control.mousePosition({
+    lngFormatter : function(pos) {
+        // lng to W E
+        return Math.abs(Math.round(pos)) + (pos <=0 ? " W" : " E");
+    },
+    latFormatter : function(pos) {
+        // lng to S N
+        return Math.abs(Math.round(pos))  + (pos >=0 ? " N" : " S");
+    }
+    }).addTo(map);
+
+    // Add overlay region tiles rectangles and text
+    var canvasTiles = L.tileLayer.canvas({continuousWorld: 'false'});
+    canvasTiles.drawTile = function(canvas, tilePoint, zoom) {
+        if(zoom >= native_zoom_level /2 && zoom <= native_zoom_level - 1) {
+            var ctx = canvas.getContext('2d');
+              ctx.globalAlpha = 0.35;
+              var zoomFactor = Math.pow(2,native_zoom_level) / Math.pow(2,zoom);
+              var tileSize = 512 / zoomFactor;
+              ctx.fillStyle="white";
+              ctx.strokeStyle="red";
+              ctx.font="12px Georgia";
+              ctx.lineWidth="2";
+              for(i=0; i < zoomFactor; i++) {
+                for(j=0; j < zoomFactor; j++) {
+                    ctx.rect(i*tileSize,j*tileSize,(i + 1)*tileSize,(j+1)*tileSize);
+                }
+              }
+              ctx.stroke();
+              ctx.globalAlpha = 0.8;
+              ctx.fillStyle="white";
+              ctx.shadowBlur = 1;
+              ctx.shadowColor = "black";
+              for(i=0; i < zoomFactor / 2; i++) {
+                for(j=0; j < zoomFactor / 2; j++) {
+                    var txt = (tilePoint.x * (zoomFactor / 2) + i)+","+(-tilePoint.y * (zoomFactor / 2) - j - 1 )
+                    var txt_width = ctx.measureText(txt).width
+                    var txtOffset = 0
+                    if(zoomFactor == 1) {
+                        txtOffset = -(tileSize / 2)
+                    }
+                    ctx.shadowOffsetX = 1;
+                    ctx.shadowOffsetY = -1;
+                    ctx.fillText(txt, i*tileSize + tileSize / 2 - txt_width / 2,j*tileSize + tileSize / 2 + 10, tileSize);
+                    ctx.shadowOffsetX = -1;
+                    ctx.shadowOffsetY = 1;
+                    ctx.fillText(txt, i*tileSize + tileSize / 2 - txt_width / 2,j*tileSize + tileSize / 2 + 10, tileSize);
+                }
+              }
+        }
+    };
+
+    addLayer(canvasTiles, 'Region tiles', 2, false);
+
+
+    function addLayer(layer, name, zIndex, active = true) {
+        if(active) {
+            layer
+                .setZIndex(zIndex)
+                .addTo(map);
+        }
+        // Create a simple layer switcher that
+        // toggles layers on and off.
+        var link = document.createElement('a');
+            link.href = '#';
+            link.className = active ? 'active' : '';
+            link.innerHTML = name;
+
+        link.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (map.hasLayer(layer)) {
+                map.removeLayer(layer);
+                this.className = '';
+            } else {
+                map.addLayer(layer);
+                this.className = 'active';
+            }
+        };
+
+        layers.appendChild(link);
+    }
 </script>
 </body>
 </html>
