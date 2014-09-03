@@ -72,7 +72,7 @@ myCRS = L.extend({}, L.CRS.Simple, {
         }
     };
     var myLayer = omnivore.csv('players/tracks.csv', options);
-    addLayer(myLayer, 'Player path', 1);
+    addLayer(myLayer, 'Player path', 1, true);
     sel.onchange = function() {
         // If the user change player recreate the layer
         map.removeLayer(myLayer);
@@ -150,7 +150,7 @@ myCRS = L.extend({}, L.CRS.Simple, {
     addLayer(canvasTiles, 'Region tiles', 2, false);
 
 
-    function addLayer(layer, name, zIndex, active = true) {
+    function addLayer(layer, name, zIndex, active) {
         if(active) {
             layer
                 .setZIndex(zIndex)
