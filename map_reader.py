@@ -206,7 +206,7 @@ def read_folder(path):
 
 def usage():
     print "Usage:"
-    print " -m \"C:\\Users..\":\t The folder that contain .map files"
+    print " -g \"C:\\Users..\":\t The folder that contain .map files"
     print " -t \"tiles\":\t\t The folder that will contain tiles (Optional)"
     print " -z 8:\t\t\t\t Zoom level 4-n. Number of tiles to extract around position 0,0 of map." \
           " It is in the form of 4^n tiles.It will extract a grid of 2^n*16 tiles on each side.(Optional)"
