@@ -48,7 +48,8 @@ class MapReader:
         with open(map_file, "rb") as curs:
             # Check beginning of file
             if not curs.read(4) == "map\0":
-                raise Exception("Wrong file header.")
+                print "Skip "+os.path.basename(map_file)+" wrong file header"
+                return
             curs.read(1)
             #######################
             # read index
@@ -64,8 +65,14 @@ class MapReader:
                 for i in xrange(num):
                     if not skip_existing or tiles_index[i] not in self.tiles:
                         # extract 16-bytes pixel 16*16 tile
-                        self.tiles[tiles_index[i]] = curs.read(512)
-                        new_tiles += 1
+                        tile_data = curs.read(512)
+                        if len(tile_data) == 512:
+                            self.tiles[tiles_index[i]] = tile_data
+                            new_tiles += 1
+                        else:
+                            # Corrupted file
+                            print "Skip "+os.path.basename(map_file)+" may be already used by another process"
+                            break
                     else:
                         curs.seek(curs.tell() + 512)
                 print "New tiles :", new_tiles
