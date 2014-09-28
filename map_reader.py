@@ -225,7 +225,7 @@ def main():
     tile_zoom = 8
     # parse command line options
     try:
-        for opt, value in getopt.getopt(sys.argv[1:], "g:")[0]:
+        for opt, value in getopt.getopt(sys.argv[1:], "g:t:z:")[0]:
             if opt == "-g":
                 game_player_path = value
             elif opt == "-t":
