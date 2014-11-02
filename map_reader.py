@@ -23,6 +23,7 @@ import itertools
 import getopt
 import sys
 import os
+import time
 try:
     from PIL import Image, ImageOps
 except ImportError:
@@ -41,6 +42,7 @@ def index_from_xy(x, y):
 
 class MapReader:
     tiles = {}
+    tiles_file_path = {}
 
     def __init__(self):
         pass
@@ -54,7 +56,6 @@ class MapReader:
             #######################
             # read index
             num = struct.unpack("I", curs.read(4))[0]
-            print "Tiles :", num
             # read tiles position
             tiles_index = [struct.unpack("i", curs.read(4))[0] for i in xrange(num)]
             #######################
@@ -68,6 +69,7 @@ class MapReader:
                         tile_data = curs.read(512)
                         if len(tile_data) == 512:
                             self.tiles[tiles_index[i]] = tile_data
+                            self.tiles_file_path[tiles_index[i]] = map_file
                             new_tiles += 1
                         else:
                             # Corrupted file
@@ -75,7 +77,6 @@ class MapReader:
                             break
                     else:
                         curs.seek(curs.tell() + 512)
-                print "New tiles :", new_tiles
             else:
                 self.tiles = dict.fromkeys(tiles_index + self.tiles.keys())
 
@@ -99,8 +100,11 @@ def create_base_tiles(player_map_path, tile_output_path, tile_level):
     """
     reader = MapReader()
     # Read and merge all tiles in .map files
+    lastprint = 0
     for i, map_file in enumerate(player_map_path):
-        print "Read map file ", os.path.basename(map_file), i + 1, "/", len(player_map_path)
+        if time.time() - lastprint > 1:
+            print "Read map file ", os.path.basename(map_file), i + 1, "/", len(player_map_path)
+            lastprint = time.time()
         try:
             reader.import_file(map_file, False)
         except struct.error:
@@ -116,7 +120,9 @@ def create_base_tiles(player_map_path, tile_output_path, tile_level):
     minmax_tile = [(tile_range, tile_range),(-tile_range, -tile_range)]
     used_tiles = 0
     for x in range(2**tile_level):
-        print "Write tile X:", x + 1, " of ", 2**tile_level
+        if time.time() - lastprint > 1:
+            print "Write tile X:", x + 1, " of ", 2**tile_level
+            lastprint = time.time()
         x_dir_make = False
         x_path = os.path.join(z_path, str(x - big_tile_range / 2))
         for y in range(2**tile_level):
@@ -135,9 +141,13 @@ def create_base_tiles(player_map_path, tile_output_path, tile_level):
                     if big_tile is None:
                         big_tile = Image.new("RGB", (256, 256))
                     # convert image string into pil image
-                    tile_im = Image.frombuffer('RGB', (16, 16), tile_data, 'raw', 'BGR;15', 0, 1)
-                    # Push this tile into the big one
-                    big_tile.paste(tile_im, (tx * 16, ty * 16))
+                    try:
+                        tile_im = Image.frombuffer('RGB', (16, 16), tile_data, 'raw', 'BGR;15', 0, 1)
+                        # Push this tile into the big one
+                        big_tile.paste(tile_im, (tx * 16, ty * 16))
+                    except ValueError:
+                        print "The following file is corrupted, skip it:\n" +\
+                              reader.tiles_file_path.get(index_from_xy(world_txy[0], world_txy[1]))
             # All 16pix tiles of this big tile has been copied into big tile
             # Time to save big tile
             if not big_tile is None:
@@ -158,6 +168,7 @@ def create_low_zoom_tiles(tile_output_path, tile_level_native):
     """
         Merge 4 tiles of 256x256 into a big 512x512 tile then resize to 256x256
     """
+    lastprint = 0
     for tile_level in range(tile_level_native, 0, -1):
         z_path = os.path.join(tile_output_path, str(tile_level))
         z_lower_path = os.path.join(tile_output_path, str(tile_level - 1))
@@ -170,7 +181,9 @@ def create_low_zoom_tiles(tile_output_path, tile_level_native):
             for y_path in map(lambda y: int(y[:-4]), os.listdir(os.path.join(z_path, str(x_path)))):
                 tiles_to_process.add((x_path, y_path))
         while len(tiles_to_process) > 0:
-            print "Zoom level ",tile_level - 1, ", ", len(tiles_to_process), " tiles left"
+            if time.time() - lastprint > 1:
+                print "Zoom level ",tile_level - 1, ", ", len(tiles_to_process), " tiles left"
+                lastprint = time.time()
             tile_to_process = next(iter(tiles_to_process))
             # compute id of origin tile
             orig_tile = (tile_to_process[0] - tile_to_process[0] % 2, tile_to_process[1] - tile_to_process[1] % 2)
