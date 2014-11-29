@@ -87,13 +87,13 @@ class MapReader:
         if not self.is_tile_stored(index):
             return None
         if self.store_history:
-            data = self.db.execute("SELECT data CPT FROM TILES WHERE POS=? ORDER BY T DESC LIMIT 1", [index]).fetchone()
+            data = self.db.execute("SELECT data FROM TILES WHERE POS=? ORDER BY T DESC LIMIT 1", [index]).fetchone()
             if not data is None:
                 return data[0]
             else:
                 return None
         else:
-            data = self.db.execute("SELECT data CPT FROM TILES WHERE POS=? LIMIT 1", [index]).fetchone()
+            data = self.db.execute("SELECT data FROM TILES WHERE POS=? LIMIT 1", [index]).fetchone()
             if not data is None:
                 return data[0]
             else:
@@ -296,15 +296,16 @@ def main():
     store_history = False
     # parse command line options
     try:
-        for opt, value in getopt.getopt(sys.argv[1:], "g:t:z:newest:")[0]:
+        for opt, value in getopt.getopt(sys.argv[1:], "g:t:z:n")[0]:
             if opt == "-g":
                 game_player_path = value
             elif opt == "-t":
                 tile_path = value
             elif opt == "-z":
                 tile_zoom = int(value)
-            elif opt == "-newest":
+            elif opt == "-n":
                 store_history = True
+                print "Store all version of tiles, may take huge disk space"
     except getopt.error, msg:
         usage()
         raw_input()
@@ -317,7 +318,7 @@ def main():
             root = Tk()
             root.withdraw()
             opts = {"initialdir": os.path.expanduser("~\\Documents\\7 Days To Die\\Saves\\Random Gen\\"),
-                    "title": "Choose player path that countain .map files"}
+                    "title": "Choose player path that contain .map files"}
             game_player_path = tkFileDialog.askdirectory(**opts)
         except ImportError:
             #Headless environment
