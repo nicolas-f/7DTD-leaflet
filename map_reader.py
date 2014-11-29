@@ -24,6 +24,8 @@ import getopt
 import sys
 import os
 import time
+import sqlite3
+
 try:
     from PIL import Image, ImageOps
 except ImportError:
@@ -41,12 +43,64 @@ def index_from_xy(x, y):
 
 
 class MapReader:
-    tiles = {}
+    db = None
+    store_history = False
     tiles_file_path = {}
+    known_tiles = set()
+    new_tiles = 0
 
-    def __init__(self):
-        pass
-    def import_file(self, map_file, index_only, skip_existing=True):
+    def __init__(self, database_directory, store_history):
+        self.db = sqlite3.connect(os.path.join(database_directory, 'tile_history.db'))
+        self.db.text_factory = str
+        self.store_history = store_history
+        self.db.execute("CREATE TABLE IF NOT EXISTS TILES(POS int,HASH int, T TIMESTAMP, data CHAR(512),"
+                        " PRIMARY KEY(POS,HASH))")
+        self.db.execute("CREATE TABLE IF NOT EXISTS VERSION as select 1 version")
+        # Read already known index
+        for record in self.db.execute("SELECT DISTINCT POS FROM TILES"):
+            self.known_tiles.add(record[0])
+
+    def is_tile_stored(self, index):
+        return index in self.known_tiles
+
+    def do_insert_tile(self, index, tile_hash):
+        if self.store_history:
+            # Check if the tile is not already in the db
+            rs = self.db.execute("SELECT COUNT(*) CPT FROM TILES WHERE POS=? AND HASH=?", [index, tile_hash])
+            if rs.fetchone()[0] == 0:
+                return True
+            else:
+                return False
+        else:
+            return True
+
+    def insert_tile(self, index, data, file_date):
+        tile_hash = hash(data)
+        if self.do_insert_tile(index, tile_hash):
+            self.db.execute("INSERT INTO TILES VALUES (?,?,?,?)", [index, tile_hash, file_date, data])
+            self.known_tiles.add(index)
+            return True
+        else:
+            return False
+
+    def fetch_tile(self, index):
+        if not self.is_tile_stored(index):
+            return None
+        if self.store_history:
+            data = self.db.execute("SELECT data CPT FROM TILES WHERE POS=? ORDER BY T DESC LIMIT 1", [index]).fetchone()
+            if not data is None:
+                return data[0]
+            else:
+                return None
+        else:
+            data = self.db.execute("SELECT data CPT FROM TILES WHERE POS=? LIMIT 1", [index]).fetchone()
+            if not data is None:
+                return data[0]
+            else:
+                return None
+
+    def import_file(self, map_file, index_only):
+        file_date = os.stat(map_file).st_mtime
         with open(map_file, "rb") as curs:
             # Check beginning of file
             if not curs.read(4) == "map\0":
@@ -60,17 +114,16 @@ class MapReader:
             tiles_index = [struct.unpack("i", curs.read(4))[0] for i in xrange(num)]
             #######################
             # read tiles pixels
-            new_tiles = 0
             if not index_only:
                 curs.seek(524297)
                 for i in xrange(num):
-                    if not skip_existing or tiles_index[i] not in self.tiles:
+                    if self.store_history or not self.is_tile_stored(tiles_index[i]):
                         # extract 16-bytes pixel 16*16 tile
                         tile_data = curs.read(512)
                         if len(tile_data) == 512:
-                            self.tiles[tiles_index[i]] = tile_data
-                            self.tiles_file_path[tiles_index[i]] = map_file
-                            new_tiles += 1
+                            if self.insert_tile(tiles_index[i], tile_data, file_date):
+                                self.tiles_file_path[tiles_index[i]] = map_file
+                                self.new_tiles += 1
                         else:
                             # Corrupted file
                             print "Skip "+os.path.basename(map_file)+" may be already used by another process"
@@ -79,18 +132,19 @@ class MapReader:
                         curs.seek(curs.tell() + 512)
             else:
                 self.tiles = dict.fromkeys(tiles_index + self.tiles.keys())
+        self.db.commit()
 
 
-def create_tiles(player_map_path, tile_output_path, tile_level=8):
+def create_tiles(player_map_path, tile_output_path, tile_level, store_history):
     """
      Call base tile and intermediate zoom tiles
     """
     if not os.path.exists(tile_output_path):
         os.mkdir(tile_output_path)
-    create_base_tiles(player_map_path, tile_output_path, tile_level)
+    create_base_tiles(player_map_path, tile_output_path, tile_level, store_history)
     create_low_zoom_tiles(tile_output_path, tile_level)
 
-def create_base_tiles(player_map_path, tile_output_path, tile_level):
+def create_base_tiles(player_map_path, tile_output_path, tile_level, store_history):
     """
     Read all .map files and create a leaflet tile folder
     @param player_map_path array of folder name where are stored map ex:C:\Users\UserName\Documents\7 Days To Die\Saves\
@@ -98,7 +152,7 @@ def create_base_tiles(player_map_path, tile_output_path, tile_level):
     @param tile_level number of tiles to extract around position 0,0 of map. It is in the form of 4^n tiles.It will
     extract a grid of 2**n tiles on each side. n=8 will give you an extraction of -128 +128 in X and Y tiles index.
     """
-    reader = MapReader()
+    reader = MapReader(tile_output_path, store_history)
     # Read and merge all tiles in .map files
     lastprint = 0
     for i, map_file in enumerate(player_map_path):
@@ -131,7 +185,7 @@ def create_base_tiles(player_map_path, tile_output_path, tile_level):
             # Combine two for loop into one
             for tx, ty in itertools.product(range(16), range(16)):
                 world_txy = (x * 16 + tx - tile_range / 2, y * 16 + ty - tile_range / 2)
-                tile_data = reader.tiles.get(index_from_xy(world_txy[0], world_txy[1]))
+                tile_data = reader.fetch_tile(index_from_xy(world_txy[0], world_txy[1]))
                 if not tile_data is None:
                     used_tiles += 1
                     minmax_tile = [(min(minmax_tile[0][0], world_txy[0]), min(minmax_tile[0][1], world_txy[1])),
@@ -161,7 +215,7 @@ def create_base_tiles(player_map_path, tile_output_path, tile_level):
                 big_tile.save(png_path, "png")
     print "Min max tiles minx:", minmax_tile[0][0], " maxx:", minmax_tile[1][0],\
           "miny:", minmax_tile[0][1], " maxy: ", minmax_tile[1][1]
-    print "Tiles used / total read", used_tiles, " / ", len(reader.tiles)
+    print "Tiles used / total read", used_tiles, " / ", reader.new_tiles
 
 
 def create_low_zoom_tiles(tile_output_path, tile_level_native):
@@ -225,26 +279,32 @@ def read_folder(path):
 
 
 def usage():
+    print "This program extract and merge map tiles of all players.Then write it in a folder with verious zoom" \
+          " levels. In order to hide player bases, this program keep only the oldest version of each tile by default."
     print "Usage:"
     print " -g \"C:\\Users..\":\t The folder that contain .map files"
     print " -t \"tiles\":\t\t The folder that will contain tiles (Optional)"
     print " -z 8:\t\t\t\t Zoom level 4-n. Number of tiles to extract around position 0,0 of map." \
           " It is in the form of 4^n tiles.It will extract a grid of 2^n*16 tiles on each side.(Optional)"
+    print " -newest Keep track of updates and write the last version of tiles. This will show players bases on map."
 
 
 def main():
     game_player_path = None
     tile_path = "tiles"
     tile_zoom = 8
+    store_history = False
     # parse command line options
     try:
-        for opt, value in getopt.getopt(sys.argv[1:], "g:t:z:")[0]:
+        for opt, value in getopt.getopt(sys.argv[1:], "g:t:z:newest:")[0]:
             if opt == "-g":
                 game_player_path = value
             elif opt == "-t":
                 tile_path = value
             elif opt == "-z":
                 tile_zoom = int(value)
+            elif opt == "-newest":
+                store_history = True
     except getopt.error, msg:
         usage()
         raw_input()
@@ -270,7 +330,7 @@ def main():
     if len(map_files) == 0:
         print "No .map files found in ", game_player_path
         exit(-1)
-    create_tiles(map_files, tile_path, tile_zoom)
+    create_tiles(map_files, tile_path, tile_zoom, store_history)
 
 if __name__ == "__main__":
     main()
