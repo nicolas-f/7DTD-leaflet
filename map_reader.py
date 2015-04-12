@@ -280,13 +280,24 @@ def read_folder(path):
 
 def usage():
     print "This program extract and merge map tiles of all players.Then write it in a folder with verious zoom" \
-          " levels. In order to hide player bases, this program keep only the oldest version of each tile by default."
+          " levels. In order to hide player bases, this program keep only the oldest version of each tile by default." \
+          " By providing the Server telnet address and password this software run in background and is able to do the" \
+          " following features:\n" \
+          " - Update tiles when a player disconnect\n" \
+          " - Add Poi when a user say /addpoi title\n" \
+          " - Update players csv coordinates file\n"
     print "Usage:"
+    print "map_reader -g XX [options]"
     print " -g \"C:\\Users..\":\t The folder that contain .map files"
     print " -t \"tiles\":\t\t The folder that will contain tiles (Optional)"
     print " -z 8:\t\t\t\t Zoom level 4-n. Number of tiles to extract around position 0,0 of map." \
           " It is in the form of 4^n tiles.It will extract a grid of 2^n*16 tiles on each side.(Optional)"
-    print " -newest Keep track of updates and write the last version of tiles. This will show players bases on map."
+    print " -s telnethost:port \t7DTD server ip and port (telnet port, default 8081) (Optional)"
+    print " -p CHANGEME Password of telnet, default is CHANGEME (Optional)"
+    print " --ignore-poi \t Do not read /addpoi command of players"
+    print " --ignore-track \t Do not write players track in csv files"
+    print " -newest Keep track of updates and write the last version of tiles. This will show players bases on map. " \
+          "(Optional)"
 
 
 def main():
@@ -294,9 +305,11 @@ def main():
     tile_path = "tiles"
     tile_zoom = 8
     store_history = False
+    telnet_server = ""
+    password = ""
     # parse command line options
     try:
-        for opt, value in getopt.getopt(sys.argv[1:], "g:t:z:n")[0]:
+        for opt, value in getopt.getopt(sys.argv[1:], "g:t:z:n:s:u:p:")[0]:
             if opt == "-g":
                 game_player_path = value
             elif opt == "-t":
@@ -306,6 +319,10 @@ def main():
             elif opt == "-n":
                 store_history = True
                 print "Store all version of tiles, may take huge disk space"
+            elif opt == "-s":
+                telnet_server = value
+            elif opt == "-p":
+                password = value
     except getopt.error, msg:
         usage()
         raw_input()
@@ -327,11 +344,15 @@ def main():
     if len(game_player_path) == 0:
         print "You must define the .map game path"
         exit(-1)
-    map_files = read_folder(game_player_path)
-    if len(map_files) == 0:
-        print "No .map files found in ", game_player_path
-        exit(-1)
-    create_tiles(map_files, tile_path, tile_zoom, store_history)
+    if len(telnet_server) == 0:
+        map_files = read_folder(game_player_path)
+        if len(map_files) == 0:
+            print "No .map files found in ", game_player_path
+            exit(-1)
+        create_tiles(map_files, tile_path, tile_zoom, store_history)
+    else:
+        # Connect to 7DTD server
+        pass
 
 if __name__ == "__main__":
     main()
