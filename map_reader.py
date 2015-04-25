@@ -26,6 +26,8 @@ import os
 import time
 import sqlite3
 
+__version__ = "1.3.dev1"
+
 try:
     from PIL import Image, ImageOps
 except ImportError:
