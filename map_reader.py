@@ -108,7 +108,7 @@ class MapReader:
             if not curs.read(4) == "map\0":
                 print "Skip "+os.path.basename(map_file)+" wrong file header"
                 return
-            curs.read(1)
+            curs.read(4)
             #######################
             # read index
             num = struct.unpack("I", curs.read(4))[0]
@@ -117,7 +117,7 @@ class MapReader:
             #######################
             # read tiles pixels
             if not index_only:
-                curs.seek(524297)
+                curs.seek(524300)
                 for i in xrange(num):
                     if self.store_history or not self.is_tile_stored(tiles_index[i]):
                         # extract 16-bytes pixel 16*16 tile
