@@ -26,7 +26,9 @@ import os
 import time
 import sqlite3
 
-__version__ = "1.3.dev1"
+__version__ = "1.3.2"
+
+print "Welcome to 7DTD leflet builder version " + __version__
 
 try:
     from PIL import Image, ImageOps
