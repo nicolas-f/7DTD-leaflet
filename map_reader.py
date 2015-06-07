@@ -26,7 +26,7 @@ import os
 import time
 import sqlite3
 
-__version__ = "1.3.2"
+__version__ = "1.3.3-dev"
 
 print "Welcome to 7DTD leflet builder version " + __version__
 
