@@ -1,12 +1,14 @@
 7DTD-leaflet
 ============
 
-Merge 7DTD discovered map in html for www.ketchu-free-party.fr
+Merge 7DTD discovered map in html
 
 The python script map_reader.py will extract dans merge all .map files of a random world.
 The result is then saved into png files.
 
 A javascript code (Leaflet) merge all this png files while browsing the big map.
+
+7DTD forum post https://7daystodie.com/forums/showthread.php?14947-Export-discovered-map-to-png
 
 How to use
 =============
@@ -15,12 +17,15 @@ Install:
 
  * Python 2.7 https://www.python.org/downloads/
  * Pillow https://pillow.readthedocs.org/en/latest/
- 
-Run map_reader.py a gui will ask you the path of the .map folder.
+
+Run map_reader.py by double clicking on this file. A gui will ask you the path of the .map folder. (for me this is in C:\Users\cumu\AppData\Roaming\7DaysToDie\Saves\Random Gen\testalpha\Player)
 
 A sub directory named tiles will be created.
 
-Open index.html in your brower.
+Open index.html in your browser (Firefox or Chrome).
+
+Command line
+=============
 
 You can also use it in command line.
 
@@ -28,8 +33,7 @@ You can also use it in command line.
 python map_reader.py -g "C:\Users\CUMU\Documents\7 Days To Die\Saves\Random Gen\ver91\Player"
 ```
 
-Usage
-=============
+Available parameters:
 
 ```
 -g "C:\\Users..\" The folder that contain .map files
@@ -41,11 +45,6 @@ Usage
 Additonnal content
 ==============
 
-You can also show where your players gone by editing an updating the "players/tracks.csv" file.
-
-Lat long is the ingame coordinates.
-
-The content of the file is only showed if you publish the website through a web server.
-You can run simple_server.py to give access on http://localhost:8000 .
+You can run simple_server.py with python to give access on http://localhost:8000 .
 
 Remember that python files are under GPLv3 license and then you need to redistribute your modifications.

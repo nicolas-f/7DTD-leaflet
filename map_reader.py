@@ -17,6 +17,7 @@
 # Source code hosted at https://github.com/nicolas-f/7dtd-prefabs
 # @author Nicolas Fortin github@nettrader.fr https://github.com/nicolas-f
 # @author Nicolas Grimaud ketchu13@hotmail.com
+from __future__ import print_function
 
 import struct
 import itertools
@@ -25,17 +26,15 @@ import sys
 import os
 import time
 import sqlite3
+__version__ = "1.3.4-dev"
 
-__version__ = "1.3.3-dev"
-
-print "Welcome to 7DTD leflet builder version " + __version__
+print("Welcome to 7DTD leaflet builder version " + __version__)
 
 try:
     from PIL import Image, ImageOps
 except ImportError:
-    print "This program require:"
-    print "Pillow https://pillow.readthedocs.org/en/latest/"
-    raw_input()
+    print("This program require:")
+    print("Pillow https://pillow.readthedocs.org/en/latest/")
     exit(-1)
 
 ##
@@ -107,8 +106,9 @@ class MapReader:
         file_date = os.stat(map_file).st_mtime
         with open(map_file, "rb") as curs:
             # Check beginning of file
-            if not curs.read(4) == "map\0":
-                print "Skip "+os.path.basename(map_file)+" wrong file header"
+            header_magic = curs.read(4).decode('ascii')
+            if not header_magic.startswith("map"):
+                print("Skip " + os.path.basename(map_file) + " wrong file header")
                 return
             ## Read version
             version = struct.unpack("I", curs.read(4))[0]
@@ -116,8 +116,12 @@ class MapReader:
             tiles_pos = 524297
             if version == 2:
                 tiles_pos = 524300
+            elif version == 3:
+                # Credits to DorHans & Seraphin for support of version 3
+                max_tiles_count = struct.unpack("I", curs.read(4))[0]
+                tiles_pos = max_tiles_count * 4 + 16
             else:
-                print "Warning old map version: ", version
+                print("Warning old map version or unsupported: ", version)
                 curs.seek(5)
 
             #######################
@@ -125,12 +129,12 @@ class MapReader:
             num = struct.unpack("I", curs.read(4))[0]
 
             # read tiles position
-            tiles_index = [struct.unpack("i", curs.read(4))[0] for i in xrange(num)]
+            tiles_index = [struct.unpack("i", curs.read(4))[0] for i in range(num)]
             #######################
             # read tiles pixels
             if not index_only:
                 curs.seek(tiles_pos)
-                for i in xrange(num):
+                for i in range(num):
                     if self.store_history or not self.is_tile_stored(tiles_index[i]):
                         # extract 16-bytes pixel 16*16 tile
                         tile_data = curs.read(512)
@@ -140,7 +144,7 @@ class MapReader:
                                 self.new_tiles += 1
                         else:
                             # Corrupted file
-                            print "Skip "+os.path.basename(map_file)+" may be already used by another process"
+                            print("Skip " + os.path.basename(map_file) + " may be already used by another process")
                             break
                     else:
                         curs.seek(curs.tell() + 512)
@@ -158,11 +162,11 @@ def create_tiles(player_map_path, tile_output_path, tile_level, store_history):
     create_base_tiles(player_map_path, tile_output_path, tile_level, store_history)
     create_low_zoom_tiles(tile_output_path, tile_level)
 
+
 def create_base_tiles(player_map_path, tile_output_path, tile_level, store_history):
     """
     Read all .map files and create a leaflet tile folder
-    @param player_map_path array of folder name where are stored map ex:C:\Users\UserName\Documents\7 Days To Die\Saves\
-    Random Gen\lll\Player\76561197968197169.map
+    @param player_map_path array of folder name where are stored map
     @param tile_level number of tiles to extract around position 0,0 of map. It is in the form of 4^n tiles.It will
     extract a grid of 2**n tiles on each side. n=8 will give you an extraction of -128 +128 in X and Y tiles index.
     """
@@ -171,17 +175,20 @@ def create_base_tiles(player_map_path, tile_output_path, tile_level, store_histo
     lastprint = 0
     for i, map_file in enumerate(player_map_path):
         if time.time() - lastprint > 1:
-            print "Read map file ", os.path.basename(map_file), i + 1, "/", len(player_map_path)
+            print("Read map file ", os.path.basename(map_file), i + 1, "/", len(player_map_path))
             lastprint = time.time()
         try:
             reader.import_file(map_file, False)
-        except struct.error:
-            print "Skip "+os.path.basename(map_file)+" may be already used by another process"
+        except struct.error as e:
+            print("Skip " + os.path.basename(map_file) + " may be already used by another process", e)
+        except OSError as e:
+            print("Skip " + os.path.basename(map_file) + " may be already used by another process", e)
+
     # make zoom folder
     z_path = os.path.join(tile_output_path, str(tile_level))
     if not os.path.exists(z_path):
         os.mkdir(z_path)
-    #compute min-max X Y
+    # compute min-max X Y
     big_tile_range = 2**tile_level
     tile_range = big_tile_range*16
     # iterate on x
@@ -189,16 +196,16 @@ def create_base_tiles(player_map_path, tile_output_path, tile_level, store_histo
     used_tiles = 0
     for x in range(2**tile_level):
         if time.time() - lastprint > 1:
-            print "Write tile X:", x + 1, " of ", 2**tile_level
+            print("Write tile X:", x + 1, " of ", 2 ** tile_level)
             lastprint = time.time()
         x_dir_make = False
-        x_path = os.path.join(z_path, str(x - big_tile_range / 2))
+        x_path = os.path.join(z_path, str(x - big_tile_range // 2))
         for y in range(2**tile_level):
             # Fetch 256 tiles
             big_tile = None
             # Combine two for loop into one
             for tx, ty in itertools.product(range(16), range(16)):
-                world_txy = (x * 16 + tx - tile_range / 2, y * 16 + ty - tile_range / 2)
+                world_txy = (x * 16 + tx - tile_range // 2, y * 16 + ty - tile_range // 2)
                 tile_data = reader.fetch_tile(index_from_xy(world_txy[0], world_txy[1]))
                 if not tile_data is None:
                     used_tiles += 1
@@ -214,8 +221,8 @@ def create_base_tiles(player_map_path, tile_output_path, tile_level, store_histo
                         # Push this tile into the big one
                         big_tile.paste(tile_im, (tx * 16, ty * 16))
                     except ValueError:
-                        print "The following file is corrupted, skip it:\n" +\
-                              reader.tiles_file_path.get(index_from_xy(world_txy[0], world_txy[1]))
+                        print("The following file is corrupted, skip it:\n" +
+                              reader.tiles_file_path.get(index_from_xy(world_txy[0], world_txy[1])))
             # All 16pix tiles of this big tile has been copied into big tile
             # Time to save big tile
             if not big_tile is None:
@@ -224,12 +231,12 @@ def create_base_tiles(player_map_path, tile_output_path, tile_level, store_histo
                     if not os.path.exists(x_path):
                         os.mkdir(x_path)
                         x_dir_make = True
-                png_path = os.path.join(x_path, str((big_tile_range - y) - big_tile_range / 2)+".png")
+                png_path = os.path.join(x_path, str((big_tile_range - y) - big_tile_range // 2)+".png")
                 big_tile = ImageOps.flip(big_tile)
                 big_tile.save(png_path, "png")
-    print "Min max tiles minx:", minmax_tile[0][0], " maxx:", minmax_tile[1][0],\
-          "miny:", minmax_tile[0][1], " maxy: ", minmax_tile[1][1]
-    print "Tiles used / total read", used_tiles, " / ", reader.new_tiles
+    print("Min max tiles minx:", minmax_tile[0][0], " maxx:", minmax_tile[1][0],
+          "miny:", minmax_tile[0][1], " maxy: ", minmax_tile[1][1])
+    print("Tiles used / total read", used_tiles, " / ", reader.new_tiles)
 
 
 def create_low_zoom_tiles(tile_output_path, tile_level_native):
@@ -250,7 +257,7 @@ def create_low_zoom_tiles(tile_output_path, tile_level_native):
                 tiles_to_process.add((x_path, y_path))
         while len(tiles_to_process) > 0:
             if time.time() - lastprint > 1:
-                print "Zoom level ",tile_level - 1, ", ", len(tiles_to_process), " tiles left"
+                print("Zoom level ", tile_level - 1, ", ", len(tiles_to_process), " tiles left")
                 lastprint = time.time()
             tile_to_process = next(iter(tiles_to_process))
             # compute id of origin tile
@@ -279,12 +286,13 @@ def create_low_zoom_tiles(tile_output_path, tile_level_native):
             # Dezoom the big tile
             lower_zoom_image = lower_zoom_image.resize((256, 256), Image.BICUBIC)
             # Save in lower zoom folder
-            x_lower_path = os.path.join(z_lower_path, str(((orig_tile[0] + (2 ** tile_level) / 2) / 2)
-                                                          - (2 ** (tile_level - 1)) / 2))
+            x_lower_path = os.path.join(z_lower_path, str(((orig_tile[0] + (2 ** tile_level) // 2) // 2)
+                                                          - (2 ** (tile_level - 1)) // 2))
             if not os.path.exists(x_lower_path):
                 os.mkdir(x_lower_path)
-            lower_zoom_image.save(os.path.join(x_lower_path, str(((orig_tile[1] + (2 ** tile_level) / 2) / 2)
-                                                                 - (2 ** (tile_level - 1)) / 2) + ".png"))
+            lower_zoom_image.save(os.path.join(x_lower_path, str(((orig_tile[1] + (2 ** tile_level) // 2) // 2)
+                                                                 - (2 ** (tile_level - 1)) // 2) + ".png"))
+
 
 def read_folder(path):
     map_files = [os.path.join(path, file_name) for file_name in os.listdir(path) if file_name.endswith(".map")]
@@ -293,14 +301,16 @@ def read_folder(path):
 
 
 def usage():
-    print "This program extract and merge map tiles of all players.Then write it in a folder with verious zoom" \
-          " levels. In order to hide player bases, this program keep only the oldest version of each tile by default."
-    print "Usage:"
-    print " -g \"C:\\Users..\":\t The folder that contain .map files"
-    print " -t \"tiles\":\t\t The folder that will contain tiles (Optional)"
-    print " -z 8:\t\t\t\t Zoom level 4-n. Number of tiles to extract around position 0,0 of map." \
-          " It is in the form of 4^n tiles.It will extract a grid of 2^n*16 tiles on each side.(Optional)"
-    print " -n :\t\t\t\t Keep track of updates and write the last version of tiles. This will show players bases on map."
+    print("This program extract and merge map tiles of all players.Then write it in a folder with verious zoom"
+          " levels. In order to hide player bases, this program keep only the oldest version of each tile by default.")
+    print("Usage:")
+    print(" -g \"C:\\Users..\":\t The folder that contain .map files")
+    print(" -t \"tiles\":\t\t The folder that will contain tiles (Optional)")
+    print(" -z 8:\t\t\t\t Zoom level 4-n. Number of tiles to extract around position 0,0 of map."
+          " It is in the form of 4^n tiles.It will extract a grid of 2^n*16 tiles on each side.(Optional)")
+    print(
+        "-n :\t\t\t\t Keep track of updates and write the last version of tiles. This will show players bases on "
+        "map.(Optional)")
 
 
 def main():
@@ -319,10 +329,9 @@ def main():
                 tile_zoom = int(value)
             elif opt == "-n":
                 store_history = True
-                print "Store all version of tiles, may take huge disk space"
-    except getopt.error, msg:
+                print("Store all version of tiles, may take huge disk space")
+    except getopt.error as msg:
         usage()
-        raw_input()
         exit(-1)
     if game_player_path is None:
         # Show gui to select tile folder
@@ -331,19 +340,19 @@ def main():
             from Tkinter import Tk
             root = Tk()
             root.withdraw()
-            opts = {"initialdir": os.path.expanduser("~\\Documents\\7 Days To Die\\Saves\\Random Gen\\"),
+            opts = {"initialdir": os.path.join(os.getenv("appdata"), "7DaysToDie", "Saves"),
                     "title": "Choose player path that contain .map files"}
             game_player_path = tkFileDialog.askdirectory(**opts)
         except ImportError:
-            #Headless environment
+            # Headless environment
             usage()
             exit(-1)
     if len(game_player_path) == 0:
-        print "You must define the .map game path"
+        print("You must define the .map game path")
         exit(-1)
     map_files = read_folder(game_player_path)
     if len(map_files) == 0:
-        print "No .map files found in ", game_player_path
+        print("No .map files found in ", game_player_path)
         exit(-1)
     create_tiles(map_files, tile_path, tile_zoom, store_history)
 
