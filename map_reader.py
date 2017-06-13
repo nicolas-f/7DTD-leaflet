@@ -214,7 +214,7 @@ def create_base_tiles(player_map_path, tile_output_path, tile_level, store_histo
                     # Add this tile to big tile
                     # Create empty big tile if not exists
                     if big_tile is None:
-                        big_tile = Image.new("RGB", (256, 256))
+                        big_tile = Image.new("RGBA", (256, 256))
                     # convert image string into pil image
                     try:
                         tile_im = Image.frombuffer('RGB', (16, 16), tile_data, 'raw', 'BGR;15', 0, 1)
@@ -275,7 +275,7 @@ def create_low_zoom_tiles(tile_output_path, tile_level_native):
                     tiles_to_process.remove(tile_index)
                 else:
                     missing_tiles.add(tile_index)
-            lower_zoom_image = Image.new("RGB", (512, 512))
+            lower_zoom_image = Image.new("RGBA", (512, 512))
             for tile_index, paste_pos in zip(*[tiles, tiles_paste_pos]):
                 if tile_index not in missing_tiles:
                     # Compute path
