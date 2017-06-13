@@ -50,49 +50,9 @@ myCRS = L.extend({}, L.CRS.Simple, {
     crs: myCRS
 }).setView([0, 0], native_zoom_level / 2);
     var layers = document.getElementById('menu-ui');
-    var players = []
+
 
     L.tileLayer('tiles/{z}/{x}/{y}.png', {maxNativeZoom : native_zoom_level, continuousWorld: 'false', attribution: '©The Fun Pimps'}).addTo(map);
-
-    var sel = document.createElement("select");
-    var options = {
-        filter: function(cols) {
-            playerName = cols['player']
-            if(players.indexOf(playerName) == -1) {
-                // Add to array
-                players.push(playerName);
-                // Add to combo box
-                var opt = document.createElement("option");
-                opt.value = playerName;
-                opt.text = playerName;
-                sel.appendChild(opt);
-            }
-            // Show only selected player waypoints
-            return cols['player'] == sel.value;
-        }
-    };
-    var myLayer = omnivore.csv('players/tracks.csv', options);
-    addLayer(myLayer, 'Player path', 1, true);
-    sel.onchange = function() {
-        // If the user change player recreate the layer
-        map.removeLayer(myLayer);
-        myLayer = omnivore.csv('players/tracks.csv', options);
-    	myLayer.addTo(map);
-    }
-    // ADD player selection control
-    var MyControl = L.Control.extend({
-        options: {
-            position: 'topleft'
-        },
-        onAdd: function(map) {
-            // create the control container with a particular class name
-            var container = L.DomUtil.create('div', 'my-custom-control');
-            container.appendChild(sel);
-            L.DomEvent.disableClickPropagation(sel);
-            return container;
-        }
-    });
-    map.addControl(new MyControl());
 
     // Add mouse position
     L.control.mousePosition({
