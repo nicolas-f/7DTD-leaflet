@@ -26,7 +26,7 @@ import sys
 import os
 import time
 import sqlite3
-__version__ = "1.3.4-dev"
+__version__ = "1.4.0-dev"
 
 print("Welcome to 7DTD leaflet builder version " + __version__)
 
@@ -152,6 +152,118 @@ class MapReader:
                 self.tiles = dict.fromkeys(tiles_index + self.tiles.keys())
         self.db.commit()
 
+
+class TtpStatModifier:
+    def __init__(self, curs):
+        self.stat_modifier_version = struct.unpack("I", curs.read(4))[0]
+        self.enum_stat_modifier_class_id = struct.unpack("B", curs.read(1))[0]
+        self.UID = struct.unpack("I", curs.read(4))[0]
+        self.file_id = struct.unpack("H", curs.read(2))[0]
+        self.buff_category_flags = struct.unpack("I", curs.read(4))[0]
+        self.stack_count = struct.unpack("I", curs.read(4))[0]
+        self.buff_timer_version = struct.unpack("I", curs.read(4))[0]
+        self.buff_timer_class_id = struct.unpack("B", curs.read(1))[0]
+
+
+class TtpStat:
+    def __init__(self, curs):
+        self.stat_version = struct.unpack("I", curs.read(4))[0]
+        self.value = struct.unpack("f", curs.read(4))[0]
+        self.max_modifier = struct.unpack("f", curs.read(4))[0]
+        self.value_modifier = struct.unpack("f", curs.read(4))[0]
+        self.base_max = struct.unpack("f", curs.read(4))[0]
+        self.original_max = struct.unpack("f", curs.read(4))[0]
+        self.original_value = struct.unpack("f", curs.read(4))[0]
+        self.unknown_g = struct.unpack("B", curs.read(1))[0]
+
+        self.intstat_modifier_list_count = struct.unpack("I", curs.read(4))[0]
+        self.stat_modifier_list = [TtpStatModifier(curs) for j in range(self.intstat_modifier_list_count)]
+
+
+
+class TtpReader:
+    def __init__(self):
+        """
+            Read .ttp player point of interest.
+            This source code is derived from
+            https://github.com/Karlovsky120/7DaysProfileEditor/blob/Alpha16/7DaysSaveManipulator/source/PlayerData/PlayerDataFile.cs#L180
+        """
+        pass
+
+    def load(self, file_path):
+        with open(file_path, "rb") as curs:
+            # Check beginning of file
+            header_magic = curs.read(4).decode('ascii')
+            if not header_magic.startswith("ttp"):
+                print("Skip " + os.path.basename(file_path) + " wrong file header")
+                return
+            ## Read version
+            version = struct.unpack("B", curs.read(1))[0]
+
+            # Has been written for this ttp version
+            if version != 35:
+                print("Skip " + os.path.basename(file_path) + " not supported file version")
+                return False
+            # Read entity
+            # EntityCreationData
+            entity_version = struct.unpack("B", curs.read(1))[0]
+            entity_class = struct.unpack("I", curs.read(4))[0]
+            id = struct.unpack("f", curs.read(4))[0]
+            lifetime = struct.unpack("i", curs.read(4))[0]
+            player_pos = [struct.unpack("f", curs.read(4))[0],
+                          struct.unpack("f", curs.read(4))[0],
+                          struct.unpack("f", curs.read(4))[0]]
+            player_rot = [struct.unpack("f", curs.read(4))[0],
+                          struct.unpack("f", curs.read(4))[0],
+                          struct.unpack("f", curs.read(4))[0]]
+
+            on_ground = struct.unpack("B", curs.read(1))[0]
+
+            body_damage_version = struct.unpack("I", curs.read(4))[0]
+
+            left_upper_leg = struct.unpack("H", curs.read(2))[0]
+            right_upper_leg = struct.unpack("H", curs.read(2))[0]
+            left_upper_arm = struct.unpack("H", curs.read(2))[0]
+            right_upper_arm = struct.unpack("H", curs.read(2))[0]
+            chest = struct.unpack("H", curs.read(2))[0]
+            head = struct.unpack("H", curs.read(2))[0]
+            dismembered_left_upper_arm = struct.unpack("B", curs.read(1))[0]
+            dismembered_right_upper_arm = struct.unpack("B", curs.read(1))[0]
+            dismembered_head = struct.unpack("B", curs.read(1))[0]
+            dismembered_right_upper_leg = struct.unpack("B", curs.read(1))[0]
+            crippled_right_leg = struct.unpack("B", curs.read(1))[0]
+
+            left_lower_leg = struct.unpack("H", curs.read(2))[0]
+            right_lower_leg = struct.unpack("H", curs.read(2))[0]
+            left_lower_arm = struct.unpack("H", curs.read(2))[0]
+            right_lower_arm = struct.unpack("H", curs.read(2))[0]
+            dismembered_left_lower_arm = struct.unpack("B", curs.read(1))[0]
+            dismembered_right_lower_arm = struct.unpack("B", curs.read(1))[0]
+            dismembered_left_lower_leg = struct.unpack("B", curs.read(1))[0]
+            dismembered_right_lower_leg = struct.unpack("B", curs.read(1))[0]
+
+            dismembered_left_upper_leg = struct.unpack("B", curs.read(1))[0]
+            crippled_left_leg = struct.unpack("B", curs.read(1))[0]
+
+
+            has_stat = struct.unpack("B", curs.read(1))[0]
+
+            if has_stat:
+                # EntityStats
+                stats_version = struct.unpack("I", curs.read(4))[0]
+                buffCategoryFlags = struct.unpack("I", curs.read(4))[0]
+                immunities = [struct.unpack("I", curs.read(4))[0] for i in range(struct.unpack("I", curs.read(4))[0])]
+                health = TtpStat(curs)
+                stamina = TtpStat(curs)
+                sickness = TtpStat(curs)
+                gassiness = TtpStat(curs)
+                speed_modifier = TtpStat(curs)
+                wellness = TtpStat(curs)
+                core_temp = TtpStat(curs)
+                food = TtpStat(curs)
+                water = TtpStat(curs)
+                waterLevel = struct.unpack("f", curs.read(4))[0]
+                # Buff
 
 def create_tiles(player_map_path, tile_output_path, tile_level, store_history):
     """
@@ -356,5 +468,9 @@ def main():
         exit(-1)
     create_tiles(map_files, tile_path, tile_zoom, store_history)
 
-if __name__ == "__main__":
-    main()
+#if __name__ == "__main__":
+#    main()
+
+reader = TtpReader()
+
+reader.load(r"C:\Users\cumu\AppData\Roaming\7DaysToDie\Saves\Random Gen\testalpha\Player\76561197968197169.ttp")
