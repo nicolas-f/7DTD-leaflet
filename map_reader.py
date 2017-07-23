@@ -169,7 +169,7 @@ def read_cs_string(curs):
         shift += 7
         if not (b & 0x80) != 0:
             break
-    return curs.read(count).decode('ascii')
+    return curs.read(count).decode('UTF-8')
 
 
 class TtpBuffDescriptor:
@@ -229,37 +229,49 @@ class TtpBuff:
 
         self.instigatorId = struct.unpack("I", curs.read(4))[0]
 
+class TtpBuffVariable:
+    def __init__(self, curs):
+        self.key = read_cs_string(curs)
+        self.buff_variable_version = struct.unpack("I", curs.read(4))[0]
+        self.q = struct.unpack("f", curs.read(4))[0]
+        self.j = struct.unpack("f", curs.read(4))[0]
+        self.s = struct.unpack("f", curs.read(4))[0]
+        self.c = struct.unpack("f", curs.read(4))[0]
 
-        # statModifierList = new
-        # List < StatModifier > ();
-        # for (int i = 0; i < statModifierListCount; i++) {
-        # ushort key = reader.ReadUInt16();
-        # StatModifier statModifier = idTable[key];
-        # statModifierList.Add(statModifier);
-        # }
-        #
-        # int
-        # buffModiferListCount = reader.ReadByte();
-        # buffModifierList = new
-        # List < BuffModifier > ();
-        # for (int j = 0; j < buffModiferListCount; j++) {
-        # BuffModifier buffModifier = BuffModifier.Read(reader);
-        # buffModifier.buff = this;
-        # buffModifierList.Add(buffModifier);
-        # }
-        #
-        # instigatorId = new
-        # Value < int > (reader.ReadInt32());
+
+
+#https://github.com/Karlovsky120/7DaysProfileEditor/blob/Alpha16/7DaysSaveManipulator/source/RegionData/TileEntity.cs
+#class RgTileEntity:
+#     switch (type) {
+#         case TileEntityType.Campfire:
+#             return new TileEntityCampfire();
+#         case TileEntityType.Forge:
+#             return new TileEntityForge();
+#         case TileEntityType.Loot:
+#             return new TileEntityLootContainer();
+#         case TileEntityType.SecureDoor:
+#             return new TileEntitySecureDoor();
+#         case TileEntityType.SecureLoot:
+#             return new TileEntitySecureLootContainer();
+#         case TileEntityType.Sign:
+#             return new TileEntitySign();
+#         case TileEntityType.Trader:
+#             return new TileEntityTrader();
+#         case TileEntityType.VendingMachine:
+#             return new TileEntityVendingMachine();
+#         case TileEntityType.Workstation:
+#             return new TileEntityWorkstation();
+#         default:
+# return new TileEntity();
+
+
 class TtpReader:
-    def __init__(self):
+    def __init__(self, file_path):
         """
             Read .ttp player point of interest.
             This source code is derived from
             https://github.com/Karlovsky120/7DaysProfileEditor/blob/Alpha16/7DaysSaveManipulator/source/PlayerData/PlayerDataFile.cs#L180
         """
-        pass
-
-    def load(self, file_path):
         with open(file_path, "rb") as curs:
             # Check beginning of file
             header_magic = curs.read(4).decode('ascii')
@@ -275,64 +287,137 @@ class TtpReader:
                 return False
             # Read entity
             # EntityCreationData
-            entity_version = struct.unpack("B", curs.read(1))[0]
-            entity_class = struct.unpack("I", curs.read(4))[0]
-            id = struct.unpack("f", curs.read(4))[0]
-            lifetime = struct.unpack("i", curs.read(4))[0]
-            player_pos = [struct.unpack("f", curs.read(4))[0],
+            self.entity_version = struct.unpack("B", curs.read(1))[0]
+            self.entity_class = struct.unpack("I", curs.read(4))[0]
+            self.id = struct.unpack("f", curs.read(4))[0]
+            self.lifetime = struct.unpack("i", curs.read(4))[0]
+            self.player_pos = [struct.unpack("f", curs.read(4))[0],
                           struct.unpack("f", curs.read(4))[0],
                           struct.unpack("f", curs.read(4))[0]]
-            player_rot = [struct.unpack("f", curs.read(4))[0],
+            self.player_rot = [struct.unpack("f", curs.read(4))[0],
                           struct.unpack("f", curs.read(4))[0],
                           struct.unpack("f", curs.read(4))[0]]
 
-            on_ground = struct.unpack("B", curs.read(1))[0]
+            self.on_ground = struct.unpack("B", curs.read(1))[0]
 
-            body_damage_version = struct.unpack("I", curs.read(4))[0]
+            self.body_damage_version = struct.unpack("I", curs.read(4))[0]
 
-            left_upper_leg = struct.unpack("H", curs.read(2))[0]
-            right_upper_leg = struct.unpack("H", curs.read(2))[0]
-            left_upper_arm = struct.unpack("H", curs.read(2))[0]
-            right_upper_arm = struct.unpack("H", curs.read(2))[0]
-            chest = struct.unpack("H", curs.read(2))[0]
-            head = struct.unpack("H", curs.read(2))[0]
-            dismembered_left_upper_arm = struct.unpack("B", curs.read(1))[0]
-            dismembered_right_upper_arm = struct.unpack("B", curs.read(1))[0]
-            dismembered_head = struct.unpack("B", curs.read(1))[0]
-            dismembered_right_upper_leg = struct.unpack("B", curs.read(1))[0]
-            crippled_right_leg = struct.unpack("B", curs.read(1))[0]
+            self.left_upper_leg = struct.unpack("H", curs.read(2))[0]
+            self.right_upper_leg = struct.unpack("H", curs.read(2))[0]
+            self.left_upper_arm = struct.unpack("H", curs.read(2))[0]
+            self.right_upper_arm = struct.unpack("H", curs.read(2))[0]
+            self.chest = struct.unpack("H", curs.read(2))[0]
+            self.head = struct.unpack("H", curs.read(2))[0]
+            self.dismembered_left_upper_arm = struct.unpack("B", curs.read(1))[0]
+            self.dismembered_right_upper_arm = struct.unpack("B", curs.read(1))[0]
+            self.dismembered_head = struct.unpack("B", curs.read(1))[0]
+            self.dismembered_right_upper_leg = struct.unpack("B", curs.read(1))[0]
+            self.crippled_right_leg = struct.unpack("B", curs.read(1))[0]
 
-            left_lower_leg = struct.unpack("H", curs.read(2))[0]
-            right_lower_leg = struct.unpack("H", curs.read(2))[0]
-            left_lower_arm = struct.unpack("H", curs.read(2))[0]
-            right_lower_arm = struct.unpack("H", curs.read(2))[0]
-            dismembered_left_lower_arm = struct.unpack("B", curs.read(1))[0]
-            dismembered_right_lower_arm = struct.unpack("B", curs.read(1))[0]
-            dismembered_left_lower_leg = struct.unpack("B", curs.read(1))[0]
-            dismembered_right_lower_leg = struct.unpack("B", curs.read(1))[0]
+            self.left_lower_leg = struct.unpack("H", curs.read(2))[0]
+            self.right_lower_leg = struct.unpack("H", curs.read(2))[0]
+            self.left_lower_arm = struct.unpack("H", curs.read(2))[0]
+            self.right_lower_arm = struct.unpack("H", curs.read(2))[0]
+            self.dismembered_left_lower_arm = struct.unpack("B", curs.read(1))[0]
+            self.dismembered_right_lower_arm = struct.unpack("B", curs.read(1))[0]
+            self.dismembered_left_lower_leg = struct.unpack("B", curs.read(1))[0]
+            self.dismembered_right_lower_leg = struct.unpack("B", curs.read(1))[0]
 
-            dismembered_left_upper_leg = struct.unpack("B", curs.read(1))[0]
-            crippled_left_leg = struct.unpack("B", curs.read(1))[0]
+            self.dismembered_left_upper_leg = struct.unpack("B", curs.read(1))[0]
+            self.crippled_left_leg = struct.unpack("B", curs.read(1))[0]
 
-            has_stat = struct.unpack("B", curs.read(1))[0]
+            self.has_stat = struct.unpack("B", curs.read(1))[0]
 
-            if has_stat:
+            if self.has_stat:
                 # EntityStats
-                stats_version = struct.unpack("I", curs.read(4))[0]
-                buffCategoryFlags = struct.unpack("I", curs.read(4))[0]
-                immunities = [struct.unpack("I", curs.read(4))[0] for i in range(struct.unpack("I", curs.read(4))[0])]
-                health = TtpStat(curs)
-                stamina = TtpStat(curs)
-                sickness = TtpStat(curs)
-                gassiness = TtpStat(curs)
-                speed_modifier = TtpStat(curs)
-                wellness = TtpStat(curs)
-                core_temp = TtpStat(curs)
-                food = TtpStat(curs)
-                water = TtpStat(curs)
-                waterLevel = struct.unpack("f", curs.read(4))[0]
+                self.stats_version = struct.unpack("I", curs.read(4))[0]
+                self.buffCategoryFlags = struct.unpack("I", curs.read(4))[0]
+                self.immunities = [struct.unpack("I", curs.read(4))[0] for i in range(struct.unpack("I", curs.read(4))[0])]
+                self.health = TtpStat(curs)
+                self.stamina = TtpStat(curs)
+                self.sickness = TtpStat(curs)
+                self.gassiness = TtpStat(curs)
+                self.speed_modifier = TtpStat(curs)
+                self.wellness = TtpStat(curs)
+                self.core_temp = TtpStat(curs)
+                self.food = TtpStat(curs)
+                self.water = TtpStat(curs)
+                self.waterLevel = struct.unpack("f", curs.read(4))[0]
                 # Buff
-                buffs = [TtpBuff(curs) for i in range(struct.unpack("I", curs.read(4))[0])]
+                self.buffs = [TtpBuff(curs) for i in range(struct.unpack("I", curs.read(4))[0])]
+
+                self.multiBuffVariableDictionaryCount = struct.unpack("I", curs.read(4))[0]
+                self.multi_buff_variable_dictionary = [TtpBuffVariable(curs) for i in range(self.multiBuffVariableDictionaryCount)]
+
+            self.death_time = struct.unpack("H", curs.read(2))[0]
+
+            self.has_tile_entity = struct.unpack("B", curs.read(1))[0]
+#
+#
+#             bool tileEntityNotNull = reader.ReadBoolean();
+#             if (tileEntityNotNull) {
+#                 type = new Value<int>(reader.ReadInt32());
+#                 lootContainer = TileEntity.Instantiate((TileEntityType)(type.Get()));
+#                 lootContainer.Read(reader);
+#             }
+#
+#             homePosition = new Vector3D<int>();
+#             homePosition.x = new Value<int>(reader.ReadInt32());
+#             homePosition.y = new Value<int>(reader.ReadInt32());
+#             homePosition.z = new Value<int>(reader.ReadInt32());
+#
+#             unknownD = new Value<int>((int)reader.ReadInt16());
+#             spawnerSource = (EnumSpawnerSource)reader.ReadByte();
+#
+#             if (entityClass.Get() == Utils.GetMonoHash("item")) {
+#                 belongsPlayerId = new Value<int>(reader.ReadInt32());
+#                 itemStack.Read(reader);
+#
+#                 reader.ReadSByte();
+#             }
+#
+#             else if (entityClass.Get() == Utils.GetMonoHash("fallingBlock")) {
+#                 blockValueRawData = new Value<uint>(reader.ReadUInt32());
+#             }
+#
+#             else if (entityClass.Get() == Utils.GetMonoHash("fallingTree")) {
+#                 blockPosition = new Vector3D<int>();
+#                 blockPosition.x = new Value<int>(reader.ReadInt32());
+#                 blockPosition.y = new Value<int>(reader.ReadInt32());
+#                 blockPosition.z = new Value<int>(reader.ReadInt32());
+#
+#                 fallTreeDir = new Vector3D<float>();
+#                 fallTreeDir.x = new Value<float>(reader.ReadSingle());
+#                 fallTreeDir.y = new Value<float>(reader.ReadSingle());
+#                 fallTreeDir.z = new Value<float>(reader.ReadSingle());
+#             }
+#
+#             else if ((entityClass.Get() == Utils.GetMonoHash("playerMale")) || (entityClass.Get() == Utils.GetMonoHash("playerFemale"))) {
+#
+#                 holdingItem = new ItemValue();
+#                 holdingItem.Read(reader);
+#                 teamNumber = new Value<int>((int)reader.ReadByte());
+#                 entityName = new Value<string>(reader.ReadString());
+#                 skinTexture = new Value<string>(reader.ReadString());
+#
+#                 bool isPlayerProfileNotNull = reader.ReadBoolean();
+#                 if (isPlayerProfileNotNull) {
+#                     playerProfile = PlayerProfile.Read(reader);
+#                 }
+#                 else {
+#                     playerProfile = null;
+#                 }
+#             }
+#
+#             //num2
+#             int entityDataLength = (int)reader.ReadUInt16();
+#             if (entityDataLength > 0) {
+#                 byte[] buffer = reader.ReadBytes(entityDataLength);
+#                 entityData = new MemoryStream(buffer);
+#             }
+#
+# isTraderEntity = new Value<bool>(reader.ReadBoolean());
+
 
 def create_tiles(player_map_path, tile_output_path, tile_level, store_history):
     """
@@ -540,6 +625,4 @@ def main():
 #if __name__ == "__main__":
 #    main()
 
-reader = TtpReader()
-
-reader.load(r"C:\Users\cumu\AppData\Roaming\7DaysToDie\Saves\Random Gen\testalpha\Player\76561197968197169.ttp")
+reader = TtpReader(r"C:\Users\cumu\AppData\Roaming\7DaysToDie\Saves\Random Gen\testalpha\Player\76561197968197169.ttp")
