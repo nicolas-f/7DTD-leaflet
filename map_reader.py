@@ -19,6 +19,7 @@
 # @author Nicolas Grimaud ketchu13@hotmail.com
 from __future__ import print_function
 
+import io
 import struct
 import itertools
 import getopt
@@ -153,6 +154,38 @@ class MapReader:
         self.db.commit()
 
 
+##
+# Python equivalent for csharp BinaryReader.ReadString
+# test with read7_bit_encoded_int(io.BytesIO(b'\x18BuffEntityUINotification\x00'))
+def read_cs_string(curs):
+    count = 0
+    shift = 0
+    byte_conversion = struct.Struct("B")
+    while True:
+        if shift == 5 * 7:
+            raise IOError("Bad 7 bit encoded data")
+        b = byte_conversion.unpack(curs.read(1))[0]
+        count |= (b & 0x7F) << shift
+        shift += 7
+        if not (b & 0x80) != 0:
+            break
+    return curs.read(count).decode('ascii')
+
+
+class TtpBuffDescriptor:
+    def __init__(self, curs):
+        self.buff_descriptor_version = struct.unpack("I", curs.read(4))[0]
+        self.categoryFlags = struct.unpack("I", curs.read(4))[0]
+        self.notificationClass = read_cs_string(curs)
+        self.overrides = [read_cs_string(curs) for i in range(struct.unpack("I", curs.read(4))[0])]
+
+
+class TtpBuffTimer:
+    def __init__(self, curs):
+        self.buff_timer_version = struct.unpack("I", curs.read(4))[0]
+        self.buff_timer_class_id = struct.unpack("B", curs.read(1))[0]
+
+
 class TtpStatModifier:
     def __init__(self, curs):
         self.stat_modifier_version = struct.unpack("I", curs.read(4))[0]
@@ -161,8 +194,7 @@ class TtpStatModifier:
         self.file_id = struct.unpack("H", curs.read(2))[0]
         self.buff_category_flags = struct.unpack("I", curs.read(4))[0]
         self.stack_count = struct.unpack("I", curs.read(4))[0]
-        self.buff_timer_version = struct.unpack("I", curs.read(4))[0]
-        self.buff_timer_class_id = struct.unpack("B", curs.read(1))[0]
+        self.buff_timer = TtpBuffTimer(curs)
 
 
 class TtpStat:
@@ -180,7 +212,44 @@ class TtpStat:
         self.stat_modifier_list = [TtpStatModifier(curs) for j in range(self.intstat_modifier_list_count)]
 
 
+class TtpBuff:
+    def __init__(self, curs):
+        self.buffVersion = struct.unpack("H", curs.read(2))[0]
+        self.buffClassId = struct.unpack("B", curs.read(1))[0]
 
+        self.timer = TtpBuffTimer(curs)
+        self.descriptor = TtpBuffDescriptor(curs)
+        self.isOverriden = struct.unpack("B", curs.read(1))[0]
+
+        self.stat_modifier_list_count = struct.unpack("B", curs.read(1))[0]
+        self.statModifierList = [struct.unpack("H", curs.read(2))[0] for i in range(self.stat_modifier_list_count)]
+
+        self.buff_modifier_list_count = struct.unpack("B", curs.read(1))[0]
+        self.buffModifierList = [struct.unpack("H", curs.read(2))[0] for i in range(self.buff_modifier_list_count)]
+
+        self.instigatorId = struct.unpack("I", curs.read(4))[0]
+
+
+        # statModifierList = new
+        # List < StatModifier > ();
+        # for (int i = 0; i < statModifierListCount; i++) {
+        # ushort key = reader.ReadUInt16();
+        # StatModifier statModifier = idTable[key];
+        # statModifierList.Add(statModifier);
+        # }
+        #
+        # int
+        # buffModiferListCount = reader.ReadByte();
+        # buffModifierList = new
+        # List < BuffModifier > ();
+        # for (int j = 0; j < buffModiferListCount; j++) {
+        # BuffModifier buffModifier = BuffModifier.Read(reader);
+        # buffModifier.buff = this;
+        # buffModifierList.Add(buffModifier);
+        # }
+        #
+        # instigatorId = new
+        # Value < int > (reader.ReadInt32());
 class TtpReader:
     def __init__(self):
         """
@@ -245,7 +314,6 @@ class TtpReader:
             dismembered_left_upper_leg = struct.unpack("B", curs.read(1))[0]
             crippled_left_leg = struct.unpack("B", curs.read(1))[0]
 
-
             has_stat = struct.unpack("B", curs.read(1))[0]
 
             if has_stat:
@@ -264,6 +332,7 @@ class TtpReader:
                 water = TtpStat(curs)
                 waterLevel = struct.unpack("f", curs.read(4))[0]
                 # Buff
+                buffs = [TtpBuff(curs) for i in range(struct.unpack("I", curs.read(4))[0])]
 
 def create_tiles(player_map_path, tile_output_path, tile_level, store_history):
     """
